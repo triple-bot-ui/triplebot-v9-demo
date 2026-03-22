@@ -2,7 +2,8 @@
 # TRIPLE BOT V9.7
 # Module 07 — Decision Intelligence
 # UI: Compact decision layer, detail in expander
-# FIX: WARNING status now triggers decision engine
+# FIX: WARNING = advisory only, not trigger
+#      Only FAIL triggers decision engine
 # ============================================
 
 def _score_option(option, validation_package):
@@ -30,7 +31,7 @@ def _build_reasoning(best_option, validation_package, ranked_options):
     if best_option is None:
         return {
             "primary_reason": "No engineering action required.",
-            "governing_explanation": "Validation status is SAFE.",
+            "governing_explanation": "Validation status is SAFE or WARNING — within acceptable limits.",
             "selection_explanation": "No corrective branch needed.",
             "rejected_explanation": "No competing engineering option required.",
             "confidence_in_selected_action": "HIGH"
@@ -90,8 +91,10 @@ def run_decision_intelligence(validation_package, decision_options):
         reverse=True
     )
 
-    # FIX: WARNING also triggers decision engine (column_util == 1.0 at limit)
-    best_option = ranked_options[0] if status in ("FAIL", "WARNING") and ranked_options else None
+    # FIX: Only FAIL triggers decision engine
+    # WARNING = advisory only (util 0.8-1.0), no corrective action needed
+    # SAFE = no action needed
+    best_option = ranked_options[0] if status == "FAIL" and ranked_options else None
     reasoning   = _build_reasoning(best_option, validation_package, ranked_options)
 
     if best_option is not None:
@@ -123,7 +126,6 @@ def display_decision_results(st, decision_results):
     desc        = decision.get("description", "")
     confidence  = reasoning.get("confidence_in_selected_action", "—")
 
-    # ── CSS ──
     st.markdown("""
     <style>
     .dc-wrap {
@@ -145,24 +147,10 @@ def display_decision_results(st, decision_results):
     .dc-header-label { font-size: 13px; font-weight: 700; letter-spacing: .04em; }
     .dc-header-conf  { font-size: 10px; color: #aaa; letter-spacing: .1em; }
     .dc-body { padding: 14px 18px; }
-    .dc-action {
-        font-size: 15px;
-        font-weight: 700;
-        color: #111;
-        margin-bottom: 6px;
-    }
-    .dc-desc {
-        font-size: 11px;
-        color: #888;
-        margin-bottom: 10px;
-    }
-    .dc-row {
-        font-size: 11px;
-        color: #666;
-        margin-bottom: 4px;
-        line-height: 1.5;
-    }
-    .dc-row b { color: #333; }
+    .dc-action { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 6px; }
+    .dc-desc   { font-size: 11px; color: #888; margin-bottom: 10px; }
+    .dc-row    { font-size: 11px; color: #666; margin-bottom: 4px; line-height: 1.5; }
+    .dc-row b  { color: #333; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -181,7 +169,6 @@ def display_decision_results(st, decision_results):
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Detail hidden ──
     with st.expander("▸ Decision Detail", expanded=False):
         st.caption("Reasoning")
         st.markdown(f"""
