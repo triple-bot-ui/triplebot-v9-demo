@@ -8,6 +8,7 @@
 # - PDF call signature safety
 # - Project Summary text truncation
 # - Corrected Design Summary text truncation
+# - FIX: steps_html rendered separately (not inside large f-string)
 # ============================================
 
 import inspect
@@ -323,7 +324,10 @@ def run_construction_output(decision_package, project_data):
         else:
             final_status = "FAIL"
     else:
-        final_status = validation.get("status", "N/A")
+        # FIX: recalculate final_status from actual utilization instead of raw validation status
+        _fsu = corrected_design.get("soil_utilization", 9.0)
+        _fcu = corrected_design.get("column_utilization", 9.0)
+        final_status = _calc_status(_fsu, _fcu)
 
     DEFAULT_DEPTH = 0.4
 
@@ -432,14 +436,8 @@ def run_construction_output(decision_package, project_data):
 
 # ============================================
 # DISPLAY — KILLER FRAME
-# Senior Engineer view: scan in 5 seconds
-# ============================================
-
-
-# ============================================
-# DISPLAY — KILLER FRAME FINAL
-# Spec: Impact top, gray header, no heavy borders
-# Physical Reason + Trade-off + Eng Label
+# FIX: steps_html rendered via separate st.markdown calls
+#      to avoid raw HTML showing inside large f-string
 # ============================================
 
 def display_construction_output(st, output_package, project_data):
@@ -457,13 +455,6 @@ def display_construction_output(st, output_package, project_data):
 
     # ── Currency ──
     _currency, _symbol, _region = _get_currency_info(project_data)
-
-    # ── Pre-build variables ──
-    steps_html = "".join([
-        f'<div class="kf-row"><span class="kf-row-key">Step {s["step_number"]}</span>'
-        f'<span class="kf-row-val">{s["action"]}</span></div>'
-        for s in seq_path
-    ])
 
     orig_fw  = original.get("foundation_width", "—")
     orig_fl  = original.get("foundation_length", "—")
@@ -529,7 +520,7 @@ def display_construction_output(st, output_package, project_data):
         phys_line2 = "Soil pressure exceeds capacity limit"
         phys_line3 = f"Foundation expanded to {corr_fw} x {corr_fl} m — pressure stabilized"
 
-    # Trade-off snapshot (3 scenarios)
+    # Trade-off snapshot
     try:
         orig_fw_f  = float(orig_fw)
         corr_fw_f  = float(corr_fw)
@@ -550,21 +541,15 @@ def display_construction_output(st, output_package, project_data):
     st.markdown("""
     <style>
     .kf-wrap { border:1px solid #e0e0de; border-radius:8px; overflow:hidden; margin-bottom:16px; font-family:'DM Mono',monospace; }
-
-    /* Header — light gray, black text */
     .kf-header { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:#f0f0ee; border-bottom:1px solid #ddd; }
     .kf-header-brand { font-size:13px; font-weight:700; letter-spacing:.04em; color:#111; }
     .kf-header-project { font-size:11px; color:#888; letter-spacing:.06em; margin-top:2px; }
     .kf-header-status-pass { font-size:11px; font-weight:600; color:#fff; background:#444; padding:4px 14px; border-radius:4px; letter-spacing:.06em; }
     .kf-header-status-fail { font-size:11px; font-weight:600; color:#fff; background:#7a3a3a; padding:4px 14px; border-radius:4px; letter-spacing:.06em; }
-
-    /* Impact block — dominant top */
     .kf-impact-top { padding:20px 24px; background:#fff; border-bottom:1px solid #e8e8e6; display:flex; gap:48px; align-items:flex-end; }
     .kf-impact-main-num { font-size:34px; font-weight:500; color:#111; line-height:1; letter-spacing:-.01em; }
     .kf-impact-main-unit { font-size:11px; color:#aaa; letter-spacing:.08em; margin-top:4px; }
     .kf-impact-sub { font-size:11px; color:#888; margin-top:10px; }
-
-    /* Result strip */
     .kf-result-strip { display:flex; gap:0; border-bottom:1px solid #e8e8e6; background:#fafaf8; }
     .kf-result-cell { flex:1; padding:10px 20px; border-right:1px solid #e8e8e6; }
     .kf-result-cell:last-child { border-right:none; }
@@ -572,8 +557,6 @@ def display_construction_output(st, output_package, project_data):
     .kf-result-val { font-size:14px; font-weight:500; color:#111; }
     .kf-result-val.good { color:#333; }
     .kf-result-status { font-size:13px; font-weight:500; color:#111; }
-
-    /* Problem/Decision grid */
     .kf-grid { display:grid; grid-template-columns:1fr 1fr; }
     .kf-cell { padding:14px 20px; border-right:1px solid #e8e8e6; border-bottom:1px solid #e8e8e6; background:#fff; }
     .kf-cell:nth-child(even) { border-right:none; }
@@ -583,13 +566,10 @@ def display_construction_output(st, output_package, project_data):
     .kf-row-val { font-weight:400; color:#444; }
     .kf-row-val.bad  { color:#999; }
     .kf-row-val.good { color:#222; font-weight:500; }
-
-    /* Physical + Trade-off */
     .phys-wrap { padding:14px 20px; background:#fafaf8; border-top:1px solid #e8e8e6; font-family:'DM Mono',monospace; }
     .phys-label { font-size:9px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#bbb; margin-bottom:8px; }
     .phys-line { font-size:11px; color:#666; margin-bottom:4px; line-height:1.6; }
     .phys-line b { color:#333; font-weight:600; }
-
     .to-wrap { padding:14px 20px; background:#fff; border-top:1px solid #e8e8e6; font-family:'DM Mono',monospace; }
     .to-label { font-size:9px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#bbb; margin-bottom:8px; }
     .to-table { width:100%; border-collapse:collapse; font-size:11px; }
@@ -597,13 +577,10 @@ def display_construction_output(st, output_package, project_data):
     .to-table td { padding:5px 8px; color:#555; border-bottom:1px solid #f5f5f3; }
     .to-table td:last-child { font-weight:600; }
     .to-table tr.selected td { color:#111; background:#f8f8f6; }
-
     .eng-wrap { padding:12px 20px; background:#f8f8f6; border-top:1px solid #e8e8e6; font-family:'DM Mono',monospace; display:flex; gap:16px; align-items:center; }
     .eng-label { font-size:9px; color:#bbb; letter-spacing:.1em; text-transform:uppercase; }
     .eng-mode { font-size:12px; font-weight:600; color:#333; }
     .eng-interp { font-size:10px; color:#999; margin-top:1px; }
-
-    /* Detail section */
     .det-sec { font-size:9px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:#bbb; border-bottom:1px solid #eee; padding-bottom:5px; margin:18px 0 10px; }
     .det-table { width:100%; border-collapse:collapse; }
     .det-table td { font-size:11px; padding:5px 8px; border-bottom:1px solid #f5f5f3; font-family:'DM Mono',monospace; color:#555; }
@@ -612,7 +589,7 @@ def display_construction_output(st, output_package, project_data):
     </style>
     """, unsafe_allow_html=True)
 
-    # ── FAIL → FIX transition (if fail before correction) ──
+    # ── FAIL → FIX transition ──
     orig_status = original.get("status", "")
     if orig_status == "FAIL" and is_pass:
         st.markdown("""
@@ -625,7 +602,7 @@ def display_construction_output(st, output_package, project_data):
         </div>
         """, unsafe_allow_html=True)
 
-    # ── Killer Frame ──
+    # ── Killer Frame (without steps_html — rendered separately below) ──
     kf = f"""
     <div class="kf-wrap">
 
@@ -637,7 +614,6 @@ def display_construction_output(st, output_package, project_data):
         <div class="{status_cls}">{status_icon} &mdash; {final_status}</div>
       </div>
 
-      <!-- IMPACT — TOP / DOMINANT -->
       <div class="kf-impact-top">
         <div>
           <div style="font-size:9px;color:#bbb;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Total Cost</div>
@@ -653,7 +629,6 @@ def display_construction_output(st, output_package, project_data):
         </div>
       </div>
 
-      <!-- RESULT STRIP -->
       <div class="kf-result-strip">
         <div class="kf-result-cell">
           <div class="kf-result-label">Final Status</div>
@@ -677,7 +652,6 @@ def display_construction_output(st, output_package, project_data):
         </div>
       </div>
 
-      <!-- PROBLEM / DECISION -->
       <div class="kf-grid">
         <div class="kf-cell">
           <div class="kf-cell-label">Problem</div>
@@ -687,16 +661,15 @@ def display_construction_output(st, output_package, project_data):
           <div class="kf-row"><span class="kf-row-key">Foundation</span><span class="kf-row-val bad">{orig_fw} &times; {orig_fl} m</span></div>
           <div class="kf-row"><span class="kf-row-key">Column Cap.</span><span class="kf-row-val bad">{orig_cap} kN</span></div>
         </div>
-        <div class="kf-cell">
+        <div class="kf-cell" id="kf-decision-cell">
           <div class="kf-cell-label">Decision</div>
-          {steps_html}
+          <div id="kf-steps-placeholder"></div>
           <div class="kf-row"><span class="kf-row-key">Foundation</span><span class="kf-row-val">{orig_fw} &rarr; {corr_fw} m</span></div>
           <div class="kf-row"><span class="kf-row-key">Column Cap.</span><span class="kf-row-val">{orig_cap} &rarr; {corr_cap} kN</span></div>
           <div class="kf-row"><span class="kf-row-key">Corrections</span><span class="kf-row-val">{n_steps} applied</span></div>
         </div>
       </div>
 
-      <!-- PHYSICAL REASON -->
       <div class="phys-wrap">
         <div class="phys-label">Physical Explanation</div>
         <div class="phys-line">{phys_line1}</div>
@@ -704,7 +677,6 @@ def display_construction_output(st, output_package, project_data):
         <div class="phys-line" style="color:#444">{phys_line3}</div>
       </div>
 
-      <!-- TRADE-OFF SNAPSHOT -->
       <div class="to-wrap">
         <div class="to-label">Engineering Trade-Off Snapshot</div>
         <table class="to-table">
@@ -715,7 +687,6 @@ def display_construction_output(st, output_package, project_data):
         </table>
       </div>
 
-      <!-- ENGINEERING LABEL -->
       <div class="eng-wrap">
         <div>
           <div class="eng-label">Design Classification</div>
@@ -737,6 +708,17 @@ def display_construction_output(st, output_package, project_data):
     </div>
     """
     st.markdown(kf, unsafe_allow_html=True)
+
+    # ── FIX: Render steps separately after main frame ──
+    if seq_path:
+        st.markdown("**Decision Steps:**")
+        for s in seq_path:
+            st.markdown(
+                f'<div class="kf-row" style="font-family:\'DM Mono\',monospace;font-size:11px;padding:2px 0">'
+                f'<span class="kf-row-key">Step {s["step_number"]}</span>'
+                f'<span class="kf-row-val">{s["action"]}</span></div>',
+                unsafe_allow_html=True
+            )
 
     # ── Technical Detail ──
     with st.expander("&#9656; Technical Detail", expanded=False):

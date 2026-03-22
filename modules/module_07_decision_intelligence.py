@@ -2,6 +2,7 @@
 # TRIPLE BOT V9.7
 # Module 07 — Decision Intelligence
 # UI: Compact decision layer, detail in expander
+# FIX: WARNING status now triggers decision engine
 # ============================================
 
 def _score_option(option, validation_package):
@@ -48,16 +49,16 @@ def _build_reasoning(best_option, validation_package, ranked_options):
         governing_explanation = f"Governing mode: {governing_mode}."
 
     if option_type == "FOUNDATION_INCREASE":
-        primary_reason       = "Foundation increase — governing failure is soil-controlled."
+        primary_reason        = "Foundation increase — governing failure is soil-controlled."
         selection_explanation = "Reduces soil pressure by increasing foundation area."
     elif option_type == "COLUMN_UPGRADE":
-        primary_reason       = "Column upgrade — governing failure is column-controlled."
+        primary_reason        = "Column upgrade — governing failure is column-controlled."
         selection_explanation = "Reduces column utilization by increasing column capacity."
     elif option_type == "LOAD_REDUCTION":
-        primary_reason       = "Load reduction — direct structural upgrade not prioritized."
+        primary_reason        = "Load reduction — direct structural upgrade not prioritized."
         selection_explanation = "Reduces total structural demand across the system."
     else:
-        primary_reason       = f"{option_type} selected by deterministic ranking."
+        primary_reason        = f"{option_type} selected by deterministic ranking."
         selection_explanation = "Highest deterministic score."
 
     rejected = [
@@ -72,10 +73,10 @@ def _build_reasoning(best_option, validation_package, ranked_options):
     confidence   = "HIGH" if gap >= 50 else ("MEDIUM" if gap >= 10 else "LOW")
 
     return {
-        "primary_reason":               primary_reason,
-        "governing_explanation":        governing_explanation,
-        "selection_explanation":        selection_explanation,
-        "rejected_explanation":         rejected_explanation,
+        "primary_reason":                primary_reason,
+        "governing_explanation":         governing_explanation,
+        "selection_explanation":         selection_explanation,
+        "rejected_explanation":          rejected_explanation,
         "confidence_in_selected_action": confidence
     }
 
@@ -89,7 +90,8 @@ def run_decision_intelligence(validation_package, decision_options):
         reverse=True
     )
 
-    best_option = ranked_options[0] if status == "FAIL" and ranked_options else None
+    # FIX: WARNING also triggers decision engine (column_util == 1.0 at limit)
+    best_option = ranked_options[0] if status in ("FAIL", "WARNING") and ranked_options else None
     reasoning   = _build_reasoning(best_option, validation_package, ranked_options)
 
     if best_option is not None:
