@@ -183,14 +183,53 @@ def render_user_input():
     with cc:
         st.markdown(f"""
 <div class="lb-card">
-  <div class="lb-card-title">Source</div>
-  <div class="lb-row">Benchmark &nbsp;&nbsp;&nbsp;&nbsp; <b>Internal</b></div>
+  <div class="lb-card-title">Source &amp; Standard</div>
+  <div class="lb-row">Benchmark &nbsp;&nbsp; <b>Internal</b></div>
   <div class="lb-row">Building Type &nbsp; <b>{building_type}</b></div>
-  <div class="lb-row">Reference &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b>&#xe0e1e2;&#xe0e1e2;&#xe0e1e2;. / ACI / BS</b></div>
+  <div class="lb-row">Load Ref. &nbsp;&nbsp;&nbsp;&nbsp; <b>ACI 318-19</b></div>
+  <div class="lb-row">Local Ref. &nbsp;&nbsp;&nbsp; <b>EIT 1007-34 / มยผ.</b></div>
+  <div class="lb-row" style="font-size:9px;color:#bbb;margin-top:4px">Preliminary only — not for construction sign-off</div>
 </div>
 """, unsafe_allow_html=True)
 
-    st.caption("⚠ Load values are internal benchmarks for preliminary validation only. Actual loads must be determined per applicable structural design codes (มยผ., ACI, BS). Final engineering approval must be performed by a licensed structural engineer.")
+    st.caption("⚠ Load values are internal benchmarks for preliminary validation only. Actual loads must be determined per applicable structural design codes (มยผ., ACI 318-19, EIT 1007-34). Final engineering approval must be performed by a licensed structural engineer.")
+    st.markdown("""
+<div style="border:1px solid #e8e8e6;border-radius:6px;padding:10px 16px;margin-top:8px;font-family:'DM Mono',monospace;background:#fafaf8;">
+  <span style="font-size:9px;color:#bbb;letter-spacing:.1em;text-transform:uppercase">System Positioning</span><br/>
+  <span style="font-size:11px;color:#444;font-weight:600">Triple Bot V9 = Error-Detection &amp; Speed-Booster</span><br/>
+  <span style="font-size:10px;color:#888">Not a replacement for engineers — a tool to eliminate repetitive checks and catch errors early.</span>
+</div>
+""", unsafe_allow_html=True)
+
+    # ── Scope of Use ──
+    st.markdown('<div class="inp-sec" style="margin-top:18px">Scope of Use</div>', unsafe_allow_html=True)
+
+    cs1, cs2 = st.columns(2)
+    with cs1:
+        st.markdown("""
+<div class="lb-card">
+  <div class="lb-card-title" style="color:#4a7c59">&#10003; Applicable For</div>
+  <div class="lb-row">&#10003; &nbsp; Reinforced Concrete (RC) Frame</div>
+  <div class="lb-row">&#10003; &nbsp; 1&ndash;4 Storeys</div>
+  <div class="lb-row">&#10003; &nbsp; Regular rectangular plan</div>
+  <div class="lb-row">&#10003; &nbsp; Static gravity load only</div>
+  <div class="lb-row">&#10003; &nbsp; Firm soil (bearing capacity known)</div>
+  <div class="lb-row">&#10003; &nbsp; Pre-design / Feasibility stage</div>
+</div>
+""", unsafe_allow_html=True)
+    with cs2:
+        st.markdown("""
+<div class="lb-card">
+  <div class="lb-card-title" style="color:#a05050">&#10007; NOT Applicable For (Red Flags)</div>
+  <div class="lb-row">&#10007; &nbsp; Seismic zone — no lateral load analysis</div>
+  <div class="lb-row">&#10007; &nbsp; Soft clay / peat — high settlement risk</div>
+  <div class="lb-row">&#10007; &nbsp; Wind load — not included</div>
+  <div class="lb-row">&#10007; &nbsp; Irregular plan / complex geometry</div>
+  <div class="lb-row">&#10007; &nbsp; Pile foundation</div>
+  <div class="lb-row">&#10007; &nbsp; Steel / timber frame</div>
+  <div class="lb-row" style="font-size:9px;color:#a05050;margin-top:4px;font-weight:600">Using outside scope = unsafe result</div>
+</div>
+""", unsafe_allow_html=True)
 
     project_data = {
         "project_name":                project_name,

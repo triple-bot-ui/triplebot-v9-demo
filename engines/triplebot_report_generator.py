@@ -624,15 +624,49 @@ def generate_engineering_report(
         ))
         elements.append(Spacer(1, 12))
 
-    elements.append(Paragraph("Assumptions", H2))
+    elements.append(Paragraph("Assumptions & Standards", H2))
     for line in [
-        "Load basis: 7.5 kN/m² — includes safety factor (~1.5×) above typical residential dead+live load of 5 kN/m².",
+        "Load basis: 7.5 kN/m² — Dead Load 4.5 + Live Load 3.0 kN/m². Ref: ACI 318-19 / EIT 1007-34 / มยผ. typical residential.",
         "Cost estimate uses fixed internal benchmark rates.",
         "Time estimate uses fixed rule-based internal benchmarks.",
         "Sequential correction path is deterministic and reproducible.",
         "Engineering tolerance: utilization ≤ 1.010 = PASS. Values between 1.000–1.010 reflect deterministic rounding, not structural failure.",
+        "Design scope: RC Frame 1–4 storeys, gravity load only, regular plan, firm soil (bearing capacity known).",
     ]:
         elements.append(Paragraph(f"• {line}", BODY))
+    elements.append(Spacer(1, 12))
+
+    # ── Scope of Use ──
+    elements.append(Paragraph("Scope of Use", H2))
+
+    USABLE_SCOPE = 166*mm
+    scope_data = [
+        [
+            Paragraph('<font size="8" color="#4a7c59"><b>✓ APPLICABLE FOR</b></font>', styles["Normal"]),
+            Paragraph('<font size="8" color="#a05050"><b>✗ NOT APPLICABLE FOR (RED FLAGS)</b></font>', styles["Normal"]),
+        ],
+        [
+            Paragraph('<font size="8" color="#444">✓ Reinforced Concrete (RC) Frame<br/>✓ 1–4 Storeys<br/>✓ Regular rectangular plan<br/>✓ Static gravity load only<br/>✓ Firm soil (bearing capacity known)<br/>✓ Pre-design / Feasibility stage<br/><br/>Ref: ACI 318-19 / EIT 1007-34 / มยผ.</font>', styles["Normal"]),
+            Paragraph('<font size="8" color="#444">✗ Seismic zone — no lateral load analysis<br/>✗ Soft clay / peat — high settlement risk<br/>✗ Wind load — not included<br/>✗ Irregular plan / complex geometry<br/>✗ Pile foundation<br/>✗ Steel / timber frame<br/><br/><font color="#a05050"><b>Using outside scope = unsafe result</b></font></font>', styles["Normal"]),
+        ]
+    ]
+    scope_t = Table(scope_data, colWidths=[USABLE_SCOPE*0.5, USABLE_SCOPE*0.5], hAlign="LEFT")
+    scope_t.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (0, 0), colors.HexColor("#f0f7f0")),
+        ("BACKGROUND",    (1, 0), (1, 0), colors.HexColor("#fdf0f0")),
+        ("BACKGROUND",    (0, 1), (0, 1), colors.HexColor("#fafaf8")),
+        ("BACKGROUND",    (1, 1), (1, 1), colors.HexColor("#fafaf8")),
+        ("FONTNAME",      (0, 0), (-1, -1), "Helvetica"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 8),
+        ("TOPPADDING",    (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
+        ("BOX",           (0, 0), (-1, -1), 0.3, RULE),
+        ("INNERGRID",     (0, 0), (-1, -1), 0.3, RULE),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+    ]))
+    elements.append(scope_t)
     elements.append(Spacer(1, 16))
 
     # ── Engineering Interpretation (FIX: dynamic text + correct classification) ──
@@ -699,6 +733,14 @@ def generate_engineering_report(
         "This report is generated using deterministic engineering logic. "
         "Final verification must be conducted by a licensed structural engineer. "
         "Triple Bot V9 — No generative AI · All results reproducible.",
+        DISCLAIMER
+    ))
+    elements.append(Spacer(1, 4))
+    elements.append(Paragraph(
+        "System Positioning: Triple Bot V9 = Error-Detection & Speed-Booster. "
+        "Not a replacement for engineers — a tool to eliminate repetitive checks and catch errors early. "
+        "Designed for Gravity Loads on RC Frame 1–4 Storeys only. "
+        "Not for Seismic Zones, Soft Clay, Wind Load, or Pile Foundation.",
         DISCLAIMER
     ))
 
