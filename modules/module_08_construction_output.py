@@ -5,6 +5,7 @@
 # - Design Classification now considers BOTH soil + column utilization
 # - Interpretation text now dynamic (not hardcoded "near capacity limit")
 # - BOQ display format guard added
+# - Tolerance note added in UI Stage 8 (Cross Clover fix)
 # ============================================
 
 import inspect
@@ -555,6 +556,17 @@ def display_construction_output(st, output_package, project_data):
         tradeoff_a_stat = "FAIL"
         tradeoff_c_stat = "FAIL"
 
+    # ── Tolerance note flag (Cross Clover fix V9.9.1) ──
+    try:
+        _corr_su_f = float(corr_su)
+        _corr_cu_f = float(corr_cu)
+        _show_tolerance_note = (
+            1.000 < _corr_su_f <= PASS_LIMIT or
+            1.000 < _corr_cu_f <= PASS_LIMIT
+        )
+    except (TypeError, ValueError):
+        _show_tolerance_note = False
+
     # ── CSS ──
     st.markdown("""
     <style>
@@ -598,6 +610,10 @@ def display_construction_output(st, output_package, project_data):
     .det-table td{font-size:11px;padding:5px 8px;border-bottom:1px solid #f5f5f3;font-family:'DM Mono',monospace;color:#555}
     .det-table td:first-child{color:#aaa;width:55%}
     .det-table td:last-child{font-weight:500;color:#222;text-align:right}
+    .tol-note{border:1px solid #d6c97a;border-radius:6px;background:#fdfbee;padding:10px 16px;
+              font-family:'DM Mono',monospace;font-size:11px;color:#7a6f2e;margin-top:8px;line-height:1.6}
+    .tol-note-label{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+                    color:#a89a3a;margin-bottom:5px}
     </style>
     """, unsafe_allow_html=True)
 
@@ -738,6 +754,24 @@ def display_construction_output(st, output_package, project_data):
       </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # ── Tolerance Note (Cross Clover fix V9.9.1) ──
+    # แสดงเมื่อ utilization อยู่ใน band 1.000–1.010
+    if _show_tolerance_note:
+        _tol_vals = []
+        if 1.000 < _corr_su_f <= PASS_LIMIT:
+            _tol_vals.append(f"Soil Util. = {corr_su}")
+        if 1.000 < _corr_cu_f <= PASS_LIMIT:
+            _tol_vals.append(f"Column Util. = {corr_cu}")
+        _tol_str = " &nbsp;&middot;&nbsp; ".join(_tol_vals)
+        st.markdown(f"""
+        <div class="tol-note">
+          <div class="tol-note-label">&#9651; Engineering Tolerance Applied</div>
+          {_tol_str} — within accepted band ≤ 1.010.
+          Deterministic rounding, not structural failure.
+          Final sign-off requires licensed structural engineer review.
+        </div>
+        """, unsafe_allow_html=True)
 
     # ── Technical Detail ──
     with st.expander("&#9656; Technical Detail", expanded=False):
