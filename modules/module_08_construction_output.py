@@ -1,21 +1,17 @@
 # ============================================
-# TRIPLE BOT V9.7
+# TRIPLE BOT V9.9.1
 # Module 08 — Construction Output System
-# FULL REPLACEMENT
-# FIXED:
-# - Sequential correction path
-# - Combined cost/time
-# - PDF call signature safety
-# - Project Summary text truncation
-# - Corrected Design Summary text truncation
-# - FIX v2: steps rendered via st.columns, NOT inside f-string HTML
-# - FIX v2: WARNING final_status recalculated via _calc_status()
+# FIX V9.9.1:
+# - Design Classification now considers BOTH soil + column utilization
+# - Interpretation text now dynamic (not hardcoded "near capacity limit")
+# - BOQ display format guard added
 # ============================================
 
 import inspect
 
 
 PASS_LIMIT = 1.010
+
 
 def _calc_status(su, cu):
     if su <= PASS_LIMIT and cu <= PASS_LIMIT:
@@ -25,11 +21,54 @@ def _calc_status(su, cu):
     return "FAIL"
 
 
+def _classify_design(su, cu):
+    """
+    Design classification based on BOTH soil and column utilization.
+    Uses max of the two — avoids misleading label when one governs.
+    """
+    try:
+        su = float(su)
+        cu = float(cu)
+    except (TypeError, ValueError):
+        return "N/A", "—"
+
+    max_util = max(su, cu)
+
+    if max_util <= 0.85:
+        return "CONSERVATIVE", "Significant safety margin on both soil and column"
+    elif max_util <= 1.0:
+        return "EFFICIENT", "Near-optimal use of structural capacity"
+    elif max_util <= PASS_LIMIT:
+        return "OPTIMIZED", "At capacity limit — within engineering tolerance ≤1.010"
+    else:
+        return "OVER-LIMIT", "Exceeds engineering tolerance — redesign required"
+
+
+def _interpret_utilization(val, label="utilization"):
+    """
+    Return honest interpretation text based on actual value.
+    """
+    try:
+        v = float(val)
+    except (TypeError, ValueError):
+        return f"{val} — {label}"
+
+    if v <= 0.85:
+        return f"{val:.3f} — safe with remaining margin"
+    elif v <= 1.0:
+        return f"{val:.3f} — near capacity limit"
+    elif v <= PASS_LIMIT:
+        return f"{val:.3f} — at capacity limit (within engineering tolerance)"
+    else:
+        return f"{val:.3f} — exceeds capacity limit"
+
+
 _REGION_CURRENCY = {
     "Thailand":      {"currency": "THB", "symbol": ""},
     "China":         {"currency": "CNY", "symbol": "¥"},
     "United States": {"currency": "USD", "symbol": "$"},
 }
+
 
 def _get_currency_info(project_data):
     region = project_data.get("region", "Thailand")
@@ -174,7 +213,7 @@ def _call_report_generator(
 
 
 # ============================================
-# CORE RUN — ไม่แตะ
+# CORE RUN
 # ============================================
 
 def run_construction_output(decision_package, project_data):
@@ -318,7 +357,6 @@ def run_construction_output(decision_package, project_data):
         else:
             final_status = "FAIL"
     else:
-        # FIX: recalculate from actual utilization — avoid raw "WARNING" from core
         _fsu = corrected_design.get("soil_utilization", 9.0)
         _fcu = corrected_design.get("column_utilization", 9.0)
         final_status = _calc_status(_fsu, _fcu)
@@ -441,8 +479,6 @@ def run_construction_output(decision_package, project_data):
 
 # ============================================
 # DISPLAY
-# FIX v2: ไม่มี steps_html ใน f-string เลย
-#         render Problem/Decision ผ่าน st.columns แยกชิ้น
 # ============================================
 
 def display_construction_output(st, output_package, project_data):
@@ -495,20 +531,8 @@ def display_construction_output(st, output_package, project_data):
     status_cls  = "kf-header-status-pass" if is_pass else "kf-header-status-fail"
     status_icon = "&#10003; PASS" if is_pass else "&#10007; FAIL"
 
-    try:
-        su = float(corr_su)
-        if su <= 0.85:
-            eng_mode   = "CONSERVATIVE"
-            eng_interp = "Design has significant safety margin"
-        elif su <= PASS_LIMIT:
-            eng_mode   = "EFFICIENT"
-            eng_interp = "Near-optimal use of foundation capacity (within engineering tolerance ≤1.010)"
-        else:
-            eng_mode   = "OVER-LIMIT"
-            eng_interp = "Exceeds engineering tolerance — redesign required"
-    except Exception:
-        eng_mode   = "N/A"
-        eng_interp = "—"
+    # ── FIX: Design Classification uses BOTH soil + column ──
+    eng_mode, eng_interp = _classify_design(corr_su, corr_cu)
 
     try:
         orig_sp_f  = float(orig_sp)
@@ -638,7 +662,7 @@ def display_construction_output(st, output_package, project_data):
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Problem / Decision — st.columns, ไม่มี steps_html ใน f-string ──
+    # ── Problem / Decision ──
     col_prob, col_dec = st.columns(2)
 
     with col_prob:
@@ -694,7 +718,7 @@ def display_construction_output(st, output_package, project_data):
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Engineering Label ──
+    # ── Engineering Label (FIX: uses _classify_design) ──
     st.markdown(f"""
     <div class="eng-wrap" style="border:1px solid #e8e8e6;border-radius:6px;margin-top:8px">
       <div>

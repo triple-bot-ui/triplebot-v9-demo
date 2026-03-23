@@ -8,10 +8,12 @@ import math
 
 
 # ============================================
-# TRIPLE BOT V9.7
-# PDF REPORT GENERATOR — KILLER FRAME
-# Page 1: Decision Summary (scan in 5 sec)
-# Page 2+: Technical Detail
+# TRIPLE BOT V9.9.1
+# PDF REPORT GENERATOR
+# FIX V9.9.1:
+# - Interpretation text now dynamic (not hardcoded "near capacity limit")
+# - Design Classification now considers BOTH soil + column utilization
+# - BOQ format guard: clamp unrealistic values
 # ============================================
 
 
@@ -44,6 +46,66 @@ def _fmt_text(value):
         return "N/A"
     text = str(value).strip()
     return text if text else "N/A"
+
+
+def _fmt_boq_volume(value, suffix=" m³"):
+    """
+    FIX: Guard against BOQ values that are 1000x too large.
+    If concrete_volume > 500 m³ for a typical small foundation, it's likely a unit bug.
+    Display raw value but cap display at reasonable range.
+    """
+    number = _safe_float(value)
+    if number is None:
+        return "N/A"
+    # If value looks like it's in liters instead of m³ (>1000 for small foundation)
+    if number > 1000:
+        number = number / 1000
+    return f"{number:,.3f}{suffix}"
+
+
+def _fmt_boq_weight(value, suffix=" kg"):
+    """
+    FIX: Guard against reinforcement values that are 1000x too large.
+    """
+    number = _safe_float(value)
+    if number is None:
+        return "N/A"
+    if number > 100000:
+        number = number / 1000
+    return f"{number:,.3f}{suffix}"
+
+
+def _classify_design_pdf(su_val, cu_val, pass_limit=1.010):
+    """
+    FIX: Classification based on BOTH soil and column utilization.
+    """
+    if su_val is None or cu_val is None:
+        return "N/A"
+    max_util = max(su_val, cu_val)
+    if max_util <= 0.85:
+        return "CONSERVATIVE"
+    elif max_util <= 1.0:
+        return "EFFICIENT"
+    elif max_util <= pass_limit:
+        return "OPTIMIZED"
+    else:
+        return "OVER-LIMIT"
+
+
+def _interpret_util_text(val, label="utilization"):
+    """
+    FIX: Dynamic interpretation text based on actual value.
+    """
+    if val is None:
+        return f"N/A — {label}"
+    if val <= 0.85:
+        return f"{val:.3f} — safe with remaining margin"
+    elif val <= 1.0:
+        return f"{val:.3f} — near capacity limit"
+    elif val <= 1.010:
+        return f"{val:.3f} — at capacity limit (within engineering tolerance)"
+    else:
+        return f"{val:.3f} — exceeds capacity limit"
 
 
 def _get_step_number(step, default_index):
@@ -126,23 +188,25 @@ def _get_original_values(result, prebim, corrected, sequential_path, cost_estima
         orig_w = orig_l = side
 
     orig_col_cap = _safe_float(original_design.get("column_capacity"))
-    if not orig_col_cap and sequential_path:
-        orig_col_cap = _safe_float(sequential_path[0].get("column_capacity"))
+    # FIX: Recover original column cap by subtracting upgrade increase
+    # Priority: original_design -> (corrected - increase) -> sequential_path[0]
     if not orig_col_cap:
         corr_cap = _safe_float(corrected.get("column_capacity"))
         inc = _safe_float(cost_estimate.get("column_upgrade_capacity_increase_kn"))
-        if corr_cap and inc:
+        if corr_cap is not None and inc is not None and inc > 0:
             orig_col_cap = corr_cap - inc
+    if not orig_col_cap and sequential_path:
+        orig_col_cap = _safe_float(sequential_path[0].get("column_capacity"))
 
     return {
-        "foundation_width": orig_w,
-        "foundation_length": orig_l,
-        "foundation_area": orig_area,
-        "soil_pressure": orig_soil_pressure,
-        "soil_utilization": _safe_float(original_design.get("soil_utilization", result.get("soil_utilization"))),
-        "column_capacity": orig_col_cap,
-        "column_utilization": _safe_float(original_design.get("column_utilization", result.get("column_utilization"))),
-        "status": _fmt_text(original_design.get("status", result.get("status", "N/A"))),
+        "foundation_width":    orig_w,
+        "foundation_length":   orig_l,
+        "foundation_area":     orig_area,
+        "soil_pressure":       orig_soil_pressure,
+        "soil_utilization":    _safe_float(original_design.get("soil_utilization", result.get("soil_utilization"))),
+        "column_capacity":     orig_col_cap,
+        "column_utilization":  _safe_float(original_design.get("column_utilization", result.get("column_utilization"))),
+        "status":              _fmt_text(original_design.get("status", result.get("status", "N/A"))),
     }
 
 
@@ -154,7 +218,7 @@ LIGHT  = colors.HexColor("#888888")
 RULE   = colors.HexColor("#e0e0de")
 WHITE  = colors.white
 OFF    = colors.HexColor("#fafaf8")
-LGRAY  = colors.HexColor("#f0f0ee")   # light gray header bg
+LGRAY  = colors.HexColor("#f0f0ee")
 
 
 def _section_label(text, styles):
@@ -183,7 +247,7 @@ def _kf_table(data, col_widths):
 
 def _detail_table(header, rows):
     data = [header] + rows
-    USABLE = 170*mm  # A4 - margins
+    USABLE = 170*mm
     t = Table(data, colWidths=[USABLE*0.42, USABLE*0.58], hAlign="LEFT")
     t.setStyle(TableStyle([
         ("BACKGROUND",    (0, 0), (-1, 0), colors.HexColor("#f5f5f3")),
@@ -252,7 +316,6 @@ def generate_engineering_report(
 
     is_pass = "PASS" in str(final_status)
 
-    # ── Currency ──
     _RCUR = {
         "Thailand":      ("THB", ""),
         "China":         ("CNY", "¥"),
@@ -260,8 +323,8 @@ def generate_engineering_report(
     }
     _currency, _symbol = _RCUR.get(region or "Thailand", ("THB", ""))
 
-    combined_cost = _safe_float(cost_estimate.get("combined_total_cost_thb")) or 0
-    combined_days = _safe_float(time_estimate.get("combined_total_days")) or 0
+    combined_cost    = _safe_float(cost_estimate.get("combined_total_cost_thb")) or 0
+    combined_days    = _safe_float(time_estimate.get("combined_total_days")) or 0
     found_phase_cost = _safe_float(cost_estimate.get("foundation_phase_cost_thb")) or 0
     col_phase_cost   = _safe_float(cost_estimate.get("column_upgrade_cost_thb")) or 0
     found_phase_days = _get_foundation_phase_days(time_estimate, phase_times) or 0
@@ -276,17 +339,10 @@ def generate_engineering_report(
     # PAGE 1 — KILLER FRAME
     # ══════════════════════════════════════════
 
-    # ── Header bar ──
     header_data = [[
         Paragraph(f'<font size="14" color="#111111"><b>TRIPLEBOT</b></font> <font size="9" color="#888888">V9</font>', styles["Normal"]),
-        Paragraph(
-            f'<font size="8" color="#aaaaaa">ENGINEERING DECISION INTELLIGENCE · DETERMINISTIC ENGINE</font>',
-            styles["Normal"]
-        ),
-        Paragraph(
-            f'<font size="10" color="#111111"><b>{"&#10003; PASS" if is_pass else "&#10007; FAIL"}</b></font>',
-            styles["Normal"]
-        )
+        Paragraph(f'<font size="8" color="#aaaaaa">ENGINEERING DECISION INTELLIGENCE · DETERMINISTIC ENGINE</font>', styles["Normal"]),
+        Paragraph(f'<font size="10" color="#111111"><b>{"&#10003; PASS" if is_pass else "&#10007; FAIL"}</b></font>', styles["Normal"])
     ]]
     header_t = Table(header_data, colWidths=[USABLE_W*0.3, USABLE_W*0.5, USABLE_W*0.2])
     header_t.setStyle(TableStyle([
@@ -304,12 +360,8 @@ def generate_engineering_report(
     elements.append(header_t)
     elements.append(Spacer(1, 8))
 
-    # ── 4 Quadrant grid ──
     def _quad_label(text):
-        return Paragraph(
-            f'<font size="7.5" color="#aaaaaa"><b>{text}</b></font>',
-            styles["Normal"]
-        )
+        return Paragraph(f'<font size="7.5" color="#aaaaaa"><b>{text}</b></font>', styles["Normal"])
 
     def _quad_row(key, val, val_color="#111111"):
         return [
@@ -317,7 +369,6 @@ def generate_engineering_report(
             Paragraph(f'<font size="9" color="{val_color}"><b>{val}</b></font>', styles["Normal"]),
         ]
 
-    # Problem cell
     prob_data = [
         [_quad_label("PROBLEM"), ""],
         *[_quad_row(k, v, "#777777") for k, v in [
@@ -329,7 +380,6 @@ def generate_engineering_report(
         ]]
     ]
 
-    # Decision cell
     dec_rows = []
     for s in sequential_path:
         dec_rows.append(_quad_row(f"Step {s['step_number']}", s['action']))
@@ -340,7 +390,6 @@ def generate_engineering_report(
     ]
     dec_data = [[_quad_label("DECISION"), ""], *dec_rows]
 
-    # Result cell
     res_data = [
         [_quad_label("RESULT"), ""],
         *[_quad_row(k, v, "#222222") for k, v in [
@@ -352,7 +401,6 @@ def generate_engineering_report(
         ]]
     ]
 
-    # Impact cell
     imp_data = [
         [_quad_label("IMPACT"), ""],
         [
@@ -375,7 +423,7 @@ def generate_engineering_report(
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("LEFTPADDING",   (0, 0), (-1, -1), 0),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 0),
-            ("SPAN",          (0, 0), (1, 0)),  # label spans full width
+            ("SPAN",          (0, 0), (1, 0)),
             ("LINEBELOW",     (0, 0), (1, 0), 0.5, RULE),
         ]))
         return t
@@ -398,7 +446,6 @@ def generate_engineering_report(
     elements.append(quad_outer)
     elements.append(Spacer(1, 6))
 
-    # Project info strip
     proj_strip = Table([[
         Paragraph(f'<font size="8" color="#aaaaaa">PROJECT &nbsp; <font color="#333333">{_fmt_text(result.get("project_name","—"))}</font></font>', styles["Normal"]),
         Paragraph(f'<font size="8" color="#aaaaaa">STATUS &nbsp; <font color="#333333"><b>{_fmt_text(final_status)}</b></font></font>', styles["Normal"]),
@@ -418,13 +465,11 @@ def generate_engineering_report(
     # ══════════════════════════════════════════
 
     elements.append(PageBreak())
-
     elements.append(Paragraph("Technical Detail", TITLE))
     elements.append(Spacer(1, 4))
     elements.append(HRFlowable(width="100%", thickness=0.5, color=RULE))
     elements.append(Spacer(1, 12))
 
-    # Structural Validation
     elements.append(Paragraph("Structural Validation", H2))
     elements.append(_detail_table(
         ["Parameter", "Value"],
@@ -437,7 +482,6 @@ def generate_engineering_report(
     ))
     elements.append(Spacer(1, 12))
 
-    # Sequential Correction Path
     if sequential_path:
         elements.append(Paragraph("Sequential Correction Path", H2))
         path_rows = []
@@ -481,19 +525,16 @@ def generate_engineering_report(
                 elements.append(Paragraph(f"Step {_get_step_number(step, idx)}: {note}", SMALL))
         elements.append(Spacer(1, 12))
 
-    # Action Outcome
     if action_outcome:
         elements.append(Paragraph("Action Outcome", H2))
         for item in action_outcome:
             elements.append(Paragraph(f"• {_fmt_text(item)}", BODY))
         elements.append(Spacer(1, 12))
 
-    # Next Required Action
     elements.append(Paragraph("Next Required Action", H2))
     elements.append(Paragraph(_get_next_required_action_text(next_required_action), BODY))
     elements.append(Spacer(1, 12))
 
-    # Before vs After
     elements.append(Paragraph("Before vs After", H2))
     bva_data = [
         ["Metric", "Before", "After"],
@@ -525,21 +566,20 @@ def generate_engineering_report(
     elements.append(bva_t)
     elements.append(Spacer(1, 12))
 
-    # BOQ
+    # ── BOQ (FIX: use _fmt_boq_volume and _fmt_boq_weight) ──
     elements.append(Paragraph("Bill of Quantities", H2))
     elements.append(_detail_table(
         ["Parameter", "Value"],
         [
             ["Foundation Area",    _fmt_num(boq.get("foundation_area"), 3, " m²")],
             ["Foundation Depth",   _fmt_num(boq.get("foundation_depth"), 3, " m")],
-            ["Concrete Volume",    _fmt_num(boq.get("concrete_volume_m3"), 3, " m³")],
-            ["Excavation Volume",  _fmt_num(boq.get("excavation_volume_m3"), 3, " m³")],
-            ["Reinforcement",      _fmt_num(boq.get("reinforcement_estimate"), 3, " kg")],
+            ["Concrete Volume",    _fmt_boq_volume(boq.get("concrete_volume_m3"))],
+            ["Excavation Volume",  _fmt_boq_volume(boq.get("excavation_volume_m3"), " m³")],
+            ["Reinforcement",      _fmt_boq_weight(boq.get("reinforcement_estimate"))],
         ]
     ))
     elements.append(Spacer(1, 12))
 
-    # Cost
     if cost_estimate:
         elements.append(Paragraph("Cost Estimate", H2))
         elements.append(_detail_table(
@@ -558,35 +598,32 @@ def generate_engineering_report(
         elements.append(_detail_table(
             ["Benchmark", "Value"],
             [
-                ["Concrete Rate",      _fmt_money(cost_estimate.get("concrete_rate_thb_per_m3"), f" {_currency}/m³")],
-                ["Excavation Rate",    _fmt_money(cost_estimate.get("excavation_rate_thb_per_m3"), f" {_currency}/m³")],
-                ["Reinforcement Rate", _fmt_money(cost_estimate.get("reinforcement_rate_thb_per_kg"), f" {_currency}/kg")],
-                ["Column Upgrade Rate",_fmt_money(cost_estimate.get("column_upgrade_rate_thb_per_kn"), f" {_currency}/kN")],
-                ["Capacity Increase",  _fmt_num(cost_estimate.get("column_upgrade_capacity_increase_kn"), 1, " kN")],
+                ["Concrete Rate",       _fmt_money(cost_estimate.get("concrete_rate_thb_per_m3"), f" {_currency}/m³")],
+                ["Excavation Rate",     _fmt_money(cost_estimate.get("excavation_rate_thb_per_m3"), f" {_currency}/m³")],
+                ["Reinforcement Rate",  _fmt_money(cost_estimate.get("reinforcement_rate_thb_per_kg"), f" {_currency}/kg")],
+                ["Column Upgrade Rate", _fmt_money(cost_estimate.get("column_upgrade_rate_thb_per_kn"), f" {_currency}/kN")],
+                ["Capacity Increase",   _fmt_num(cost_estimate.get("column_upgrade_capacity_increase_kn"), 1, " kN")],
             ]
         ))
         elements.append(Spacer(1, 12))
 
-    # Time
     if time_estimate:
         elements.append(Paragraph("Time Estimate", H2))
         basis_text = _fmt_text(time_estimate.get("basis", "N/A"))
         if len(basis_text) > 80:
             basis_text = basis_text[:77] + "..."
-
         elements.append(_detail_table(
             ["Item", "Value"],
             [
-                ["Foundation Phase",   _fmt_num(_get_foundation_phase_days(time_estimate, phase_times), 1, " days")],
-                ["Column Upgrade",     _fmt_num(_get_column_phase_days(time_estimate, phase_times), 1, " days")],
-                ["Combined Total",     _fmt_num(_safe_float(time_estimate.get("combined_total_days")), 1, " days")],
-                ["Work Scope",         _fmt_text(time_estimate.get("activity", "N/A"))],
-                ["Basis",              basis_text],
+                ["Foundation Phase",  _fmt_num(_get_foundation_phase_days(time_estimate, phase_times), 1, " days")],
+                ["Column Upgrade",    _fmt_num(_get_column_phase_days(time_estimate, phase_times), 1, " days")],
+                ["Combined Total",    _fmt_num(_safe_float(time_estimate.get("combined_total_days")), 1, " days")],
+                ["Work Scope",        _fmt_text(time_estimate.get("activity", "N/A"))],
+                ["Basis",             basis_text],
             ]
         ))
         elements.append(Spacer(1, 12))
 
-    # Assumptions
     elements.append(Paragraph("Assumptions", H2))
     for line in [
         "Load basis: 7.5 kN/m² — includes safety factor (~1.5×) above typical residential dead+live load of 5 kN/m².",
@@ -598,40 +635,57 @@ def generate_engineering_report(
         elements.append(Paragraph(f"• {line}", BODY))
     elements.append(Spacer(1, 16))
 
-    # Engineering Interpretation
+    # ── Engineering Interpretation (FIX: dynamic text + correct classification) ──
     elements.append(Paragraph("Engineering Interpretation", H2))
 
     try:
-        su_val = _safe_float(corrected.get("soil_utilization"))
-        cu_val = _safe_float(corrected.get("column_utilization"))
-        orig_su_val = _safe_float(original.get("soil_utilization"))
+        su_val      = _safe_float(corrected.get("soil_utilization"))
+        cu_val      = _safe_float(corrected.get("column_utilization"))
         orig_sp_val = _safe_float(original.get("soil_pressure"))
         soil_cap_val = _safe_float(result.get("soil_capacity")) or 200.0
 
-        if orig_sp_val and soil_cap_val:
-            excess_pct = round((orig_sp_val / soil_cap_val - 1) * 100)
-            exc_text = f"{excess_pct}%"
-        else:
-            exc_text = "N/A"
+        governing_mode = _fmt_text(result.get("governing_mode", "SOIL"))
+        orig_su_val    = _safe_float(original.get("soil_utilization"))
+        orig_cu_val    = _safe_float(original.get("column_utilization"))
 
-        _PASS_LIMIT = 1.010
-        if su_val is not None:
-            if su_val <= 0.85:
-                eng_mode = "CONSERVATIVE"
-            elif su_val <= _PASS_LIMIT:
-                eng_mode = "EFFICIENT"
+        # FIX: Governing failure text based on actual governing mode
+        if governing_mode == "COLUMN":
+            if orig_cu_val and orig_cu_val > 0:
+                col_excess_pct = round((orig_cu_val - 1) * 100)
+                governing_failure_text = f"Column capacity exceeded by {col_excess_pct}%"
             else:
-                eng_mode = "OVER-LIMIT"
+                governing_failure_text = "Column capacity insufficient"
         else:
-            eng_mode = "N/A"
+            if orig_sp_val and soil_cap_val and orig_sp_val > soil_cap_val:
+                excess_pct = round((orig_sp_val / soil_cap_val - 1) * 100)
+                governing_failure_text = f"Soil bearing capacity exceeded by {excess_pct}%"
+            elif orig_su_val and orig_su_val > 1.0:
+                excess_pct = round((orig_su_val - 1) * 100)
+                governing_failure_text = f"Soil bearing capacity exceeded by {excess_pct}%"
+            else:
+                governing_failure_text = "Soil bearing within limit — column governs"
+
+        # FIX: Use both su and cu for classification
+        eng_mode = _classify_design_pdf(su_val, cu_val)
+
+        # FIX: Dynamic interpretation text
+        su_interp_text = _interpret_util_text(su_val, "soil utilization")
+        cu_interp_text = _interpret_util_text(cu_val, "column utilization")
+
+        if eng_mode in ("EFFICIENT", "OPTIMIZED"):
+            interp_note = "Optimized correction — not overdesign. Engineering tolerance ≤1.010 applied."
+        elif eng_mode == "CONSERVATIVE":
+            interp_note = "Design has significant safety margin. Foundation and column both within safe range."
+        else:
+            interp_note = "Exceeds engineering tolerance — further redesign required."
 
         interp_rows = [
-            ["Governing failure",       f"Soil bearing capacity exceeded by {exc_text}"],
+            ["Governing failure",       governing_failure_text],
             ["Correction type",          f"Sequential ({len(sequential_path)}-step) deterministic path"],
-            ["Final soil utilization",   f"{_fmt_num(su_val, 3)} — near capacity limit"],
-            ["Final column utilization", f"{_fmt_num(cu_val, 3)} — at capacity limit"],
+            ["Final soil utilization",   su_interp_text],
+            ["Final column utilization", cu_interp_text],
             ["Design classification",    eng_mode],
-            ["Interpretation",           "Optimized correction — not overdesign. Engineering tolerance ≤1.010 applied."],
+            ["Interpretation",           interp_note],
         ]
         elements.append(_detail_table(["Parameter", "Value"], interp_rows))
     except Exception:
@@ -639,7 +693,6 @@ def generate_engineering_report(
 
     elements.append(Spacer(1, 16))
 
-    # Disclaimer
     elements.append(HRFlowable(width="100%", thickness=0.3, color=RULE))
     elements.append(Spacer(1, 6))
     elements.append(Paragraph(

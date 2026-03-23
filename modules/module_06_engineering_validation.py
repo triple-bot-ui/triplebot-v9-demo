@@ -2,6 +2,7 @@
 # TRIPLE BOT V9.7
 # Module 06 — Engineering Validation Interface
 # UI: Decision Layer only, detail in expander
+# UPDATE: Added Calculation Transparency section
 # ============================================
 
 def run_engineering_validation(project_data):
@@ -66,6 +67,7 @@ def display_validation_results(st, results):
 
     validation     = results["validation"]
     prebim         = results["prebim"]
+    input_data     = results["input"]
     status         = validation["status"]
     column_util    = validation["column_utilization"]
     soil_util      = validation["soil_utilization"]
@@ -139,6 +141,56 @@ def display_validation_results(st, results):
         color: #aaa;
         margin-top: 2px;
     }
+    .calc-wrap {
+        border: 1px solid #e8e8e6;
+        border-radius: 6px;
+        background: #fafaf8;
+        padding: 14px 18px;
+        font-family: 'DM Mono', monospace;
+        margin-bottom: 12px;
+    }
+    .calc-title {
+        font-size: 9px;
+        color: #bbb;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+    .calc-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 6px;
+        gap: 8px;
+    }
+    .calc-formula {
+        font-size: 10px;
+        color: #999;
+        flex: 1;
+    }
+    .calc-eq {
+        font-size: 10px;
+        color: #bbb;
+        white-space: nowrap;
+        margin: 0 8px;
+    }
+    .calc-result {
+        font-size: 11px;
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+    }
+    .calc-divider {
+        border: none;
+        border-top: 1px solid #eee;
+        margin: 8px 0;
+    }
+    .calc-note {
+        font-size: 9px;
+        color: #bbb;
+        margin-top: 8px;
+        line-height: 1.5;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -180,6 +232,88 @@ def display_validation_results(st, results):
     </div>
     """, unsafe_allow_html=True)
 
+    # ============================================
+    # CALCULATION TRANSPARENCY — NEW SECTION
+    # ============================================
+
+    floor_area       = input_data["building_width"] * input_data["building_length"]
+    total_load       = input_data["total_load"]
+    foundation_area  = input_data["foundation_width"] * input_data["foundation_length"]
+    required_area    = total_load / input_data["soil_capacity"] if input_data["soil_capacity"] > 0 else 0
+    load_factor      = 7.5  # kN/m² — internal benchmark
+
+    col_util_calc    = total_load / input_data["column_capacity"] if input_data["column_capacity"] > 0 else 0
+    soil_util_calc   = total_load / (foundation_area * input_data["soil_capacity"]) if foundation_area > 0 and input_data["soil_capacity"] > 0 else 0
+    soil_pres_calc   = total_load / foundation_area if foundation_area > 0 else 0
+
+    with st.expander("▸ Calculation Path", expanded=False):
+        st.markdown(f"""
+        <div class="calc-wrap">
+          <div class="calc-title">Load Calculation</div>
+
+          <div class="calc-row">
+            <span class="calc-formula">Floor Area = Width × Length</span>
+            <span class="calc-eq">= {input_data['building_width']} × {input_data['building_length']}</span>
+            <span class="calc-result">= {floor_area:.2f} m²</span>
+          </div>
+
+          <div class="calc-row">
+            <span class="calc-formula">Total Load = Floor Area × {load_factor} kN/m² × Floors</span>
+            <span class="calc-eq">= {floor_area:.2f} × {load_factor} × {input_data['num_floors']}</span>
+            <span class="calc-result">= {total_load:.1f} kN</span>
+          </div>
+
+          <hr class="calc-divider"/>
+          <div class="calc-title">Foundation Check</div>
+
+          <div class="calc-row">
+            <span class="calc-formula">Foundation Area = Width × Length</span>
+            <span class="calc-eq">= {input_data['foundation_width']} × {input_data['foundation_length']}</span>
+            <span class="calc-result">= {foundation_area:.4f} m²</span>
+          </div>
+
+          <div class="calc-row">
+            <span class="calc-formula">Required Area = Total Load ÷ Soil Capacity</span>
+            <span class="calc-eq">= {total_load:.1f} ÷ {input_data['soil_capacity']}</span>
+            <span class="calc-result">= {required_area:.4f} m²</span>
+          </div>
+
+          <div class="calc-row">
+            <span class="calc-formula">Soil Pressure = Total Load ÷ Foundation Area</span>
+            <span class="calc-eq">= {total_load:.1f} ÷ {foundation_area:.4f}</span>
+            <span class="calc-result">= {soil_pres_calc:.2f} kN/m²</span>
+          </div>
+
+          <hr class="calc-divider"/>
+          <div class="calc-title">Utilization Check</div>
+
+          <div class="calc-row">
+            <span class="calc-formula">Soil Utilization = Soil Pressure ÷ Soil Capacity</span>
+            <span class="calc-eq">= {soil_pres_calc:.2f} ÷ {input_data['soil_capacity']}</span>
+            <span class="calc-result">= {soil_util_calc:.3f}</span>
+          </div>
+
+          <div class="calc-row">
+            <span class="calc-formula">Column Utilization = Total Load ÷ Column Capacity</span>
+            <span class="calc-eq">= {total_load:.1f} ÷ {input_data['column_capacity']}</span>
+            <span class="calc-result">= {col_util_calc:.3f}</span>
+          </div>
+
+          <div class="calc-row">
+            <span class="calc-formula">Pass Condition: Utilization ≤ 1.010</span>
+            <span class="calc-eq"></span>
+            <span class="calc-result">Limit = 1.010</span>
+          </div>
+
+          <hr class="calc-divider"/>
+          <div class="calc-note">
+            Load basis: {load_factor} kN/m² includes safety factor (~1.5×) above typical residential dead+live load of 5 kN/m².<br>
+            All calculations are deterministic and reproducible.<br>
+            Final verification must be conducted by a licensed structural engineer.
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
     # ── Technical detail hidden ──
     with st.expander("▸ Validation Detail", expanded=False):
         import pandas as pd
@@ -198,13 +332,13 @@ def display_validation_results(st, results):
             """, unsafe_allow_html=True)
 
         with c2:
-            total_load   = results["input"]["total_load"]
-            col_capacity = results["input"]["column_capacity"]
-            soil_cap     = results["input"]["soil_capacity"]
-            column_sf    = col_capacity / total_load if total_load > 0 else float("inf")
-            soil_sf      = soil_cap / soil_pressure if soil_pressure > 0 else float("inf")
-            col_margin   = validation["column_margin"]
-            soil_margin  = validation["soil_margin"]
+            total_load_v   = results["input"]["total_load"]
+            col_capacity   = results["input"]["column_capacity"]
+            soil_cap       = results["input"]["soil_capacity"]
+            column_sf      = col_capacity / total_load_v if total_load_v > 0 else float("inf")
+            soil_sf        = soil_cap / soil_pressure if soil_pressure > 0 else float("inf")
+            col_margin     = validation["column_margin"]
+            soil_margin    = validation["soil_margin"]
 
             st.caption("Safety Factors & Margins")
             st.markdown(f"""
