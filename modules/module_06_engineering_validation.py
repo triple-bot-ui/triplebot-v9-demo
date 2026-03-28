@@ -7,6 +7,9 @@
 # - Keep validation logic stable
 # - Keep Trust Layer integration stable
 # - No core engineering calculation rewrite
+# SURFACE POLISH ONLY:
+# - Darken secondary text colors for readability
+# - No logic / formula / data changes
 # ============================================
 
 import re
@@ -333,7 +336,7 @@ TRUST_CSS = """
 }
 .tl-header-badge {
     font-size: 10px;
-    color: #aaa;
+    color: #c8c8c8;
     letter-spacing: .06em;
 }
 .tl-body {
@@ -348,31 +351,31 @@ TRUST_CSS = """
     font-size: 11px;
     gap: 12px;
 }
-.tl-key { color: #aaa; }
-.tl-val { font-weight: 500; color: #222; text-align: right; }
+.tl-key { color: #707070; }
+.tl-val { font-weight: 500; color: #181818; text-align: right; }
 .tl-divider { border: none; border-top: 1px solid #f0f0ee; margin: 8px 0; }
 
-.tl-verdict-CONSISTENT { color: #3a7d44; font-weight: 700; }
-.tl-verdict-MISMATCH { color: #b07d00; font-weight: 700; }
-.tl-verdict-NO_REFERENCE { color: #888; font-weight: 700; }
+.tl-verdict-CONSISTENT { color: #2f6f3e; font-weight: 700; }
+.tl-verdict-MISMATCH { color: #8c6200; font-weight: 700; }
+.tl-verdict-NO_REFERENCE { color: #666666; font-weight: 700; }
 .tl-verdict-REFERENCE_ONLY { color: #7a5b00; font-weight: 700; }
 
-.tl-check-CONSISTENT { color: #3a7d44; font-weight: 700; }
-.tl-check-MISMATCH { color: #b07d00; font-weight: 700; }
-.tl-check-NO_REFERENCE { color: #888; font-weight: 700; }
+.tl-check-CONSISTENT { color: #2f6f3e; font-weight: 700; }
+.tl-check-MISMATCH { color: #8c6200; font-weight: 700; }
+.tl-check-NO_REFERENCE { color: #666666; font-weight: 700; }
 .tl-check-REFERENCE_ONLY { color: #7a5b00; font-weight: 700; }
 
-.tl-proximity-SAFE { color: #3a7d44; }
-.tl-proximity-APPROACHING { color: #b07d00; }
-.tl-proximity-NEAR_LIMIT { color: #b07d00; font-weight: 700; }
-.tl-proximity-AT_LIMIT { color: #b07d00; font-weight: 700; }
+.tl-proximity-SAFE { color: #2f6f3e; }
+.tl-proximity-APPROACHING { color: #8c6200; }
+.tl-proximity-NEAR_LIMIT { color: #8c6200; font-weight: 700; }
+.tl-proximity-AT_LIMIT { color: #8c6200; font-weight: 700; }
 .tl-proximity-OVER_LIMIT { color: #7a3a3a; font-weight: 700; }
 
 .tl-source-user { color: #2f6f3e; font-weight: 700; }
-.tl-source-derived { color: #8b6f00; font-weight: 700; }
-.tl-source-assumption { color: #a05c00; font-weight: 700; }
-.tl-source-default { color: #555; font-weight: 700; }
-.tl-source-rule { color: #444; font-weight: 700; }
+.tl-source-derived { color: #7d6500; font-weight: 700; }
+.tl-source-assumption { color: #965300; font-weight: 700; }
+.tl-source-default { color: #444444; font-weight: 700; }
+.tl-source-rule { color: #2f2f2f; font-weight: 700; }
 </style>
 """
 
@@ -647,7 +650,7 @@ def display_validation_results(st, results):
         }
         .vf-status-mode {
             font-size: 10px;
-            color: #aaa;
+            color: #c8c8c8;
             letter-spacing: .1em;
         }
         .vf-grid {
@@ -663,7 +666,7 @@ def display_validation_results(st, results):
         .vf-cell:nth-child(even) { border-right: none; }
         .vf-cell-label {
             font-size: 9px;
-            color: #bbb;
+            color: #767676;
             letter-spacing: .1em;
             text-transform: uppercase;
             margin-bottom: 3px;
@@ -671,13 +674,13 @@ def display_validation_results(st, results):
         .vf-cell-val {
             font-size: 20px;
             font-weight: 400;
-            color: #111;
+            color: #111111;
             line-height: 1.1;
         }
-        .vf-cell-val.bad  { color: #666; }
+        .vf-cell-val.bad  { color: #2f2f2f; }
         .vf-cell-sub {
             font-size: 10px;
-            color: #aaa;
+            color: #6e6e6e;
             margin-top: 2px;
         }
         .calc-wrap {
@@ -690,7 +693,7 @@ def display_validation_results(st, results):
         }
         .calc-title {
             font-size: 9px;
-            color: #bbb;
+            color: #757575;
             letter-spacing: .1em;
             text-transform: uppercase;
             margin-bottom: 10px;
@@ -704,19 +707,19 @@ def display_validation_results(st, results):
         }
         .calc-formula {
             font-size: 10px;
-            color: #999;
+            color: #555555;
             flex: 1;
         }
         .calc-eq {
             font-size: 10px;
-            color: #bbb;
+            color: #6f6f6f;
             white-space: nowrap;
             margin: 0 8px;
         }
         .calc-result {
             font-size: 11px;
             font-weight: 600;
-            color: #333;
+            color: #181818;
             white-space: nowrap;
         }
         .calc-divider {
@@ -726,7 +729,7 @@ def display_validation_results(st, results):
         }
         .calc-note {
             font-size: 9px;
-            color: #bbb;
+            color: #6f6f6f;
             margin-top: 8px;
             line-height: 1.5;
         }
@@ -873,11 +876,11 @@ def display_validation_results(st, results):
             st.markdown(
                 f"""
                 <table style="font-size:11px;width:100%;font-family:'DM Mono',monospace">
-                  <tr><td style="color:#aaa">Total Load</td><td style="font-weight:400">{prebim['total_load']} kN</td></tr>
-                  <tr><td style="color:#aaa">Soil Pressure</td><td style="font-weight:400">{prebim['soil_pressure']} kN/m²</td></tr>
-                  <tr><td style="color:#aaa">Foundation Area</td><td style="font-weight:400">{prebim['foundation_area']} m²</td></tr>
-                  <tr><td style="color:#aaa">Required Area</td><td style="font-weight:400">{prebim['required_area']} m²</td></tr>
-                  <tr><td style="color:#aaa">Status</td><td style="font-weight:400">{prebim['status']}</td></tr>
+                  <tr><td style="color:#6f6f6f">Total Load</td><td style="font-weight:500;color:#1a1a1a">{prebim['total_load']} kN</td></tr>
+                  <tr><td style="color:#6f6f6f">Soil Pressure</td><td style="font-weight:500;color:#1a1a1a">{prebim['soil_pressure']} kN/m²</td></tr>
+                  <tr><td style="color:#6f6f6f">Foundation Area</td><td style="font-weight:500;color:#1a1a1a">{prebim['foundation_area']} m²</td></tr>
+                  <tr><td style="color:#6f6f6f">Required Area</td><td style="font-weight:500;color:#1a1a1a">{prebim['required_area']} m²</td></tr>
+                  <tr><td style="color:#6f6f6f">Status</td><td style="font-weight:500;color:#1a1a1a">{prebim['status']}</td></tr>
                 </table>
                 """,
                 unsafe_allow_html=True,
@@ -896,10 +899,10 @@ def display_validation_results(st, results):
             st.markdown(
                 f"""
                 <table style="font-size:11px;width:100%;font-family:'DM Mono',monospace">
-                  <tr><td style="color:#aaa">Column Safety Factor</td><td style="font-weight:400">{column_sf:.4f}</td></tr>
-                  <tr><td style="color:#aaa">Soil Safety Factor</td><td style="font-weight:400">{soil_sf:.4f}</td></tr>
-                  <tr><td style="color:#aaa">Column Margin (kN)</td><td style="font-weight:400">{col_margin:.2f}</td></tr>
-                  <tr><td style="color:#aaa">Soil Margin (kN/m²)</td><td style="font-weight:400">{soil_margin:.2f}</td></tr>
+                  <tr><td style="color:#6f6f6f">Column Safety Factor</td><td style="font-weight:500;color:#1a1a1a">{column_sf:.4f}</td></tr>
+                  <tr><td style="color:#6f6f6f">Soil Safety Factor</td><td style="font-weight:500;color:#1a1a1a">{soil_sf:.4f}</td></tr>
+                  <tr><td style="color:#6f6f6f">Column Margin (kN)</td><td style="font-weight:500;color:#1a1a1a">{col_margin:.2f}</td></tr>
+                  <tr><td style="color:#6f6f6f">Soil Margin (kN/m²)</td><td style="font-weight:500;color:#1a1a1a">{soil_margin:.2f}</td></tr>
                 </table>
                 """,
                 unsafe_allow_html=True,

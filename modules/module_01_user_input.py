@@ -10,7 +10,10 @@ import streamlit as st
 # UI UPDATE:
 # - Header branding updated to ENGINEER PILOT
 # - Top header bar changed to pastel blue
+# SURFACE-ONLY FIX:
+# - Increase low-contrast text strength on white / light-gray backgrounds
 # - No logic changes
+# - No layout changes
 # ============================================
 
 CERTIFIED_MIN_STOREYS = 1
@@ -35,18 +38,18 @@ def render_user_input():
 .cmd-header{border:1px solid #d5e3f3;border-radius:8px;overflow:hidden;margin-bottom:20px;font-family:'DM Mono',monospace}
 .cmd-top{background:#dbeafe;border-bottom:1px solid #c8dcf1;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
 .cmd-title{font-size:13px;font-weight:600;color:#173b63;letter-spacing:.04em}
-.cmd-scope{font-size:10px;color:#5a7da3;letter-spacing:.08em;text-transform:uppercase}
-.cmd-status{font-size:10px;color:#4f7194;background:#f8fbff;border:1px solid #bfd3e8;padding:3px 10px;border-radius:3px;letter-spacing:.06em}
+.cmd-scope{font-size:10px;color:#4f7094;letter-spacing:.08em;text-transform:uppercase}
+.cmd-status{font-size:10px;color:#456785;background:#f8fbff;border:1px solid #bfd3e8;padding:3px 10px;border-radius:3px;letter-spacing:.06em}
 .cmd-info{display:grid;grid-template-columns:repeat(3,1fr);background:#fff}
 .cmd-info-cell{padding:12px 20px;border-right:1px solid #eef4fa}
 .cmd-info-cell:last-child{border-right:none}
-.cmd-info-label{font-size:9px;color:#bbb;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
-.cmd-info-val{font-size:13px;color:#333;font-weight:400}
-.inp-sec{font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#bbb;border-bottom:1px solid #eee;padding-bottom:6px;margin:20px 0 12px}
+.cmd-info-label{font-size:9px;color:#8fa0b2;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.cmd-info-val{font-size:13px;color:#2a2a2a;font-weight:400}
+.inp-sec{font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#96a3b0;border-bottom:1px solid #eee;padding-bottom:6px;margin:20px 0 12px}
 .lb-card{border:1px solid #e8e8e6;border-radius:6px;padding:12px 14px;font-family:'DM Mono',monospace;background:#fff;height:100%}
-.lb-card-title{font-size:9px;color:#bbb;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
-.lb-row{font-size:11px;color:#555;margin-bottom:4px}
-.lb-row b{color:#222}
+.lb-card-title{font-size:9px;color:#96a3b0;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.lb-row{font-size:11px;color:#444;margin-bottom:4px}
+.lb-row b{color:#1f1f1f}
 .lb-total{font-size:11px;color:#111;font-weight:700;border-top:1px solid #eee;padding-top:6px;margin-top:6px}
 </style>
 """, unsafe_allow_html=True)
@@ -124,46 +127,45 @@ def render_user_input():
 
     preview_is_fail = (soil_util > PASS_LIMIT or col_util > PASS_LIMIT)
     pred_status = "FAIL — Correction required" if preview_is_fail else "PASS — Within limits"
-    pred_color = "#888" if preview_is_fail else "#444"
-    soil_util_color = "#888" if soil_util > PASS_LIMIT else "#333"
-    col_util_color = "#888" if col_util > PASS_LIMIT else "#333"
+    pred_color = "#666" if preview_is_fail else "#2f2f2f"
+    soil_util_color = "#666" if soil_util > PASS_LIMIT else "#2f2f2f"
+    col_util_color = "#666" if col_util > PASS_LIMIT else "#2f2f2f"
 
     # ── Live Calculation Preview ──
     st.markdown(f"""
 <div style="border:1px solid #e8e8e6;border-radius:6px;overflow:hidden;margin-top:20px;font-family:'DM Mono',monospace;">
   <div style="background:#f8f8f6;border-bottom:1px solid #e8e8e6;padding:8px 16px;">
-    <span style="font-size:9px;color:#bbb;letter-spacing:.12em;text-transform:uppercase">Live Calculation Preview</span>
+    <span style="font-size:9px;color:#9aa6b3;letter-spacing:.12em;text-transform:uppercase">Live Calculation Preview</span>
   </div>
   <div style="display:grid;grid-template-columns:repeat(4,1fr);background:#fff;">
     <div style="padding:10px 16px;border-right:1px solid #f0f0ee;">
-      <div style="font-size:9px;color:#bbb;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Total Load</div>
-      <div style="font-size:14px;color:#333">{total_load:,.0f} kN</div>
+      <div style="font-size:9px;color:#98a5b2;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Total Load</div>
+      <div style="font-size:14px;color:#2a2a2a">{total_load:,.0f} kN</div>
     </div>
     <div style="padding:10px 16px;border-right:1px solid #f0f0ee;">
-      <div style="font-size:9px;color:#bbb;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Soil Util.</div>
+      <div style="font-size:9px;color:#98a5b2;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Soil Util.</div>
       <div style="font-size:14px;color:{soil_util_color}">{soil_util:.3f}</div>
     </div>
     <div style="padding:10px 16px;border-right:1px solid #f0f0ee;">
-      <div style="font-size:9px;color:#bbb;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Column Util.</div>
+      <div style="font-size:9px;color:#98a5b2;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Column Util.</div>
       <div style="font-size:14px;color:{col_util_color}">{col_util:.3f}</div>
     </div>
     <div style="padding:10px 16px;">
-      <div style="font-size:9px;color:#bbb;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Predicted</div>
+      <div style="font-size:9px;color:#98a5b2;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Predicted</div>
       <div style="font-size:12px;font-weight:500;color:{pred_color}">{pred_status}</div>
     </div>
   </div>
   <div style="background:#fafaf8;border-top:1px solid #f0f0ee;padding:6px 16px;display:flex;gap:20px;">
-    <span style="font-size:10px;color:#bbb">Floor Area <span style="color:#555">{floor_area:,.0f} m&#178;</span></span>
-    <span style="font-size:10px;color:#bbb">Total Area <span style="color:#555">{total_floor_area:,.0f} m&#178;</span></span>
-    <span style="font-size:10px;color:#bbb">Governing Mode <span style="color:#555">{governing}</span></span>
-    <span style="font-size:10px;color:#bbb">Foundation Area <span style="color:#555">{found_area:.2f} m&#178;</span></span>
+    <span style="font-size:10px;color:#97a4b1">Floor Area <span style="color:#444">{floor_area:,.0f} m&#178;</span></span>
+    <span style="font-size:10px;color:#97a4b1">Total Area <span style="color:#444">{total_floor_area:,.0f} m&#178;</span></span>
+    <span style="font-size:10px;color:#97a4b1">Governing Mode <span style="color:#444">{governing}</span></span>
+    <span style="font-size:10px;color:#97a4b1">Foundation Area <span style="color:#444">{found_area:.2f} m&#178;</span></span>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
     # ============================================
     # LOAD BASIS & ASSUMPTIONS — 3 cards via st.columns
-    # (avoids CSS class rendering bug)
     # ============================================
 
     st.markdown('<div class="inp-sec" style="margin-top:18px">Load Basis &amp; Assumptions</div>', unsafe_allow_html=True)
@@ -198,16 +200,16 @@ def render_user_input():
   <div class="lb-row">Building Type &nbsp; <b>{building_type}</b></div>
   <div class="lb-row">Load Ref. &nbsp;&nbsp;&nbsp;&nbsp; <b>ACI 318-19</b></div>
   <div class="lb-row">Local Ref. &nbsp;&nbsp;&nbsp; <b>EIT 1007-34 / มยผ.</b></div>
-  <div class="lb-row" style="font-size:9px;color:#bbb;margin-top:4px">Preliminary only — not for construction sign-off</div>
+  <div class="lb-row" style="font-size:9px;color:#98a5b2;margin-top:4px">Preliminary only — not for construction sign-off</div>
 </div>
 """, unsafe_allow_html=True)
 
     st.caption("⚠ Load values are internal benchmarks for preliminary validation only. Actual loads must be determined per applicable structural design codes (มยผ., ACI 318-19, EIT 1007-34). Final engineering approval must be performed by a licensed structural engineer.")
     st.markdown("""
 <div style="border:1px solid #e8e8e6;border-radius:6px;padding:10px 16px;margin-top:8px;font-family:'DM Mono',monospace;background:#fafaf8;">
-  <span style="font-size:9px;color:#bbb;letter-spacing:.1em;text-transform:uppercase">System Positioning</span><br/>
-  <span style="font-size:11px;color:#444;font-weight:600">Triple Bot V9 = Error-Detection &amp; Speed-Booster</span><br/>
-  <span style="font-size:10px;color:#888">Not a replacement for engineers — a tool to eliminate repetitive checks and catch errors early.</span>
+  <span style="font-size:9px;color:#97a4b1;letter-spacing:.1em;text-transform:uppercase">System Positioning</span><br/>
+  <span style="font-size:11px;color:#303030;font-weight:600">Triple Bot V9 = Error-Detection &amp; Speed-Booster</span><br/>
+  <span style="font-size:10px;color:#666">Not a replacement for engineers — a tool to eliminate repetitive checks and catch errors early.</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -237,7 +239,7 @@ def render_user_input():
   <div class="lb-row">&#10007; &nbsp; Irregular plan / complex geometry</div>
   <div class="lb-row">&#10007; &nbsp; Pile foundation</div>
   <div class="lb-row">&#10007; &nbsp; Steel / timber frame</div>
-  <div class="lb-row" style="font-size:9px;color:#a05050;margin-top:4px;font-weight:600">Using outside scope = unsafe result</div>
+  <div class="lb-row" style="font-size:9px;color:#8f4f4f;margin-top:4px;font-weight:600">Using outside scope = unsafe result</div>
 </div>
 """, unsafe_allow_html=True)
 
