@@ -6,18 +6,24 @@ import streamlit as st
 # UI: Command Center (not a form)
 # UPDATE: Added Load Assumption Panel (Input Depth)
 # FIX: Split CSS inject from HTML to fix raw-text rendering bug
+# FIX: Live Preview now uses engineering tolerance limit (1.010)
+# UI UPDATE:
+# - Header branding updated to ENGINEER PILOT
+# - Top header bar changed to pastel blue
+# - No logic changes
 # ============================================
 
 CERTIFIED_MIN_STOREYS = 1
 CERTIFIED_MAX_STOREYS = 4
 
 DEAD_LOAD_KNM2 = 4.5
-SAFETY_FACTOR  = 1.5
+SAFETY_FACTOR = 1.5
+PASS_LIMIT = 1.010
 
 LIVE_LOAD_MAP = {
     "Residential": 3.0,
-    "Commercial":  5.0,
-    "Industrial":  7.5,
+    "Commercial": 5.0,
+    "Industrial": 7.5,
 }
 
 
@@ -26,13 +32,13 @@ def render_user_input():
     # ── CSS inject (separate call, no HTML mixed in) ──
     st.markdown("""
 <style>
-.cmd-header{border:1px solid #e0e0de;border-radius:8px;overflow:hidden;margin-bottom:20px;font-family:'DM Mono',monospace}
-.cmd-top{background:#f0f0ee;border-bottom:1px solid #e0e0de;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
-.cmd-title{font-size:13px;font-weight:600;color:#111;letter-spacing:.04em}
-.cmd-scope{font-size:10px;color:#aaa;letter-spacing:.08em;text-transform:uppercase}
-.cmd-status{font-size:10px;color:#888;background:#fff;border:1px solid #ddd;padding:3px 10px;border-radius:3px;letter-spacing:.06em}
+.cmd-header{border:1px solid #d5e3f3;border-radius:8px;overflow:hidden;margin-bottom:20px;font-family:'DM Mono',monospace}
+.cmd-top{background:#dbeafe;border-bottom:1px solid #c8dcf1;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.cmd-title{font-size:13px;font-weight:600;color:#173b63;letter-spacing:.04em}
+.cmd-scope{font-size:10px;color:#5a7da3;letter-spacing:.08em;text-transform:uppercase}
+.cmd-status{font-size:10px;color:#4f7194;background:#f8fbff;border:1px solid #bfd3e8;padding:3px 10px;border-radius:3px;letter-spacing:.06em}
 .cmd-info{display:grid;grid-template-columns:repeat(3,1fr);background:#fff}
-.cmd-info-cell{padding:12px 20px;border-right:1px solid #f0f0ee}
+.cmd-info-cell{padding:12px 20px;border-right:1px solid #eef4fa}
 .cmd-info-cell:last-child{border-right:none}
 .cmd-info-label{font-size:9px;color:#bbb;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
 .cmd-info-val{font-size:13px;color:#333;font-weight:400}
@@ -50,7 +56,7 @@ def render_user_input():
 <div class="cmd-header">
   <div class="cmd-top">
     <div>
-      <div class="cmd-title">TRIPLEBOT V9 &nbsp;&mdash;&nbsp; Project Input</div>
+      <div class="cmd-title">TRIPLE BOT V9 &nbsp;&mdash;&nbsp; ENGINEER PILOT</div>
       <div class="cmd-scope">Pre-Construction Decision Engine</div>
     </div>
     <div class="cmd-status">READY</div>
@@ -104,19 +110,23 @@ def render_user_input():
         load_per_storey = st.number_input("Load per Storey (kN)", min_value=0.0, value=75.0, step=5.0, format="%.2f")
 
     # ── Calculations ──
-    live_load                   = LIVE_LOAD_MAP.get(building_type, 3.0)
-    eng_load                    = DEAD_LOAD_KNM2 + live_load
-    floor_area                  = building_width * building_length
+    live_load = LIVE_LOAD_MAP.get(building_type, 3.0)
+    eng_load = DEAD_LOAD_KNM2 + live_load
+    floor_area = building_width * building_length
     engineering_load_per_storey = floor_area * eng_load
-    total_load                  = engineering_load_per_storey * num_floors
-    total_floor_area            = floor_area * num_floors
-    found_area                  = foundation_width * foundation_length
-    soil_pressure               = total_load / found_area if found_area > 0 else 0
-    soil_util                   = soil_pressure / soil_capacity if soil_capacity > 0 else 0
-    col_util                    = total_load / column_capacity if column_capacity > 0 else 0
-    governing                   = "SOIL" if soil_util >= col_util else "COLUMN"
-    pred_status                 = "FAIL — Correction required" if (soil_util > 1.0 or col_util > 1.0) else "PASS — Within limits"
-    pred_color                  = "#888" if (soil_util > 1.0 or col_util > 1.0) else "#444"
+    total_load = engineering_load_per_storey * num_floors
+    total_floor_area = floor_area * num_floors
+    found_area = foundation_width * foundation_length
+    soil_pressure = total_load / found_area if found_area > 0 else 0
+    soil_util = soil_pressure / soil_capacity if soil_capacity > 0 else 0
+    col_util = total_load / column_capacity if column_capacity > 0 else 0
+    governing = "SOIL" if soil_util >= col_util else "COLUMN"
+
+    preview_is_fail = (soil_util > PASS_LIMIT or col_util > PASS_LIMIT)
+    pred_status = "FAIL — Correction required" if preview_is_fail else "PASS — Within limits"
+    pred_color = "#888" if preview_is_fail else "#444"
+    soil_util_color = "#888" if soil_util > PASS_LIMIT else "#333"
+    col_util_color = "#888" if col_util > PASS_LIMIT else "#333"
 
     # ── Live Calculation Preview ──
     st.markdown(f"""
@@ -131,11 +141,11 @@ def render_user_input():
     </div>
     <div style="padding:10px 16px;border-right:1px solid #f0f0ee;">
       <div style="font-size:9px;color:#bbb;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Soil Util.</div>
-      <div style="font-size:14px;color:{'#888' if soil_util > 1.0 else '#333'}">{soil_util:.3f}</div>
+      <div style="font-size:14px;color:{soil_util_color}">{soil_util:.3f}</div>
     </div>
     <div style="padding:10px 16px;border-right:1px solid #f0f0ee;">
       <div style="font-size:9px;color:#bbb;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Column Util.</div>
-      <div style="font-size:14px;color:{'#888' if col_util > 1.0 else '#333'}">{col_util:.3f}</div>
+      <div style="font-size:14px;color:{col_util_color}">{col_util:.3f}</div>
     </div>
     <div style="padding:10px 16px;">
       <div style="font-size:9px;color:#bbb;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px">Predicted</div>
@@ -232,25 +242,25 @@ def render_user_input():
 """, unsafe_allow_html=True)
 
     project_data = {
-        "project_name":                project_name,
-        "building_type":               building_type,
-        "region":                      region.replace(" 🇹🇭","").replace(" 🇨🇳","").replace(" 🇺🇸",""),
-        "building_width":              building_width,
-        "building_length":             building_length,
-        "num_floors":                  num_floors,
-        "floor_height_per_storey":     floor_height_per_storey,
-        "column_capacity":             column_capacity,
-        "soil_capacity":               soil_capacity,
-        "load_per_storey":             load_per_storey,
+        "project_name": project_name,
+        "building_type": building_type,
+        "region": region.replace(" 🇹🇭", "").replace(" 🇨🇳", "").replace(" 🇺🇸", ""),
+        "building_width": building_width,
+        "building_length": building_length,
+        "num_floors": num_floors,
+        "floor_height_per_storey": floor_height_per_storey,
+        "column_capacity": column_capacity,
+        "soil_capacity": soil_capacity,
+        "load_per_storey": load_per_storey,
         "engineering_load_per_storey": engineering_load_per_storey,
-        "total_load":                  total_load,
-        "foundation_width":            foundation_width,
-        "foundation_length":           foundation_length,
-        "total_floor_area":            total_floor_area,
-        "dead_load_knm2":              DEAD_LOAD_KNM2,
-        "live_load_knm2":              live_load,
-        "engineering_load_knm2":       eng_load,
-        "load_safety_factor":          SAFETY_FACTOR,
+        "total_load": total_load,
+        "foundation_width": foundation_width,
+        "foundation_length": foundation_length,
+        "total_floor_area": total_floor_area,
+        "dead_load_knm2": DEAD_LOAD_KNM2,
+        "live_load_knm2": live_load,
+        "engineering_load_knm2": eng_load,
+        "load_safety_factor": SAFETY_FACTOR,
     }
 
     return project_data

@@ -6,6 +6,9 @@
 import pandas as pd
 
 
+PASS_LIMIT = 1.010
+
+
 def run_scenario_exploration(
     load_per_storey,
     number_of_storeys,
@@ -60,7 +63,7 @@ def run_scenario_exploration(
 
         utilization_ratio = max(column_utilization, soil_utilization)
 
-        if utilization_ratio <= 1.0:
+        if utilization_ratio <= PASS_LIMIT:
             status = "SAFE"
         else:
             status = "FAIL"

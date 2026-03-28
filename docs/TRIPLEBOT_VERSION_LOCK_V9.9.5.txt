@@ -1,0 +1,228 @@
+TRIPLE BOT — V9.9.5 FINAL LOCK + WORKFLOW
+
+================================
+OFFICIAL LOCK NAME
+================================
+
+TRIPLE_BOT_V9_9_5_LOCKED
+
+================================
+WORKING / DEPLOY FOLDER
+================================
+
+05 TRIPLE_BOT_V9_ENGINEER_PILOT
+
+ใช้โฟลเดอร์นี้สำหรับ:
+- ทำงานตัว Streamlit
+- อัปเดตขึ้น Streamlit Cloud
+- ใช้เป็น public / working package
+
+================================
+APP / BUILD LABEL
+================================
+
+APP NAME:
+TRIPLE BOT V9 — ENGINEER PILOT
+
+BUILD LABEL:
+V9.9.5 Locked
+
+================================
+LOCK NOTE FILE
+================================
+
+docs/TRIPLEBOT_VERSION_LOCK_V9.9.5.txt
+
+================================
+LOCK NOTE CONTENT
+================================
+
+TRIPLE BOT — V9.9.5 OFFICIAL LOCK
+
+LOCK DATE:
+2026-03-28
+
+VERSION:
+V9.9.5
+
+LOCK STATUS:
+OFFICIALLY LOCKED
+
+FINAL VERDICT:
+STABLE TESTED BASELINE / PASS / FROZEN FOR REFERENCE
+
+--------------------------------
+LOCK SOURCE
+--------------------------------
+
+WORKING SOURCE VERIFIED:
+05 TRIPLE_BOT_V9_ENGINEER_PILOT
+
+FROZEN AS:
+TRIPLE_BOT_V9_9_5_LOCKED
+
+REFERENCE / BASELINE STATUS:
+V9.9.5 is the frozen baseline from this point onward.
+
+--------------------------------
+RUNTIME ENVIRONMENT
+--------------------------------
+
+PYTHON:
+Python 3.10.11
+
+EXECUTION COMMAND:
+python3 -m streamlit run ui/triplebot_v9_app.py
+
+EXECUTION RULE:
+- Use python3 only
+- Do not use python (Python 2)
+- Do not run development tests from LOCKED folder
+- LOCKED folder is reference only
+- All future testing / debugging must occur in a new DEV branch
+
+--------------------------------
+LOCK SCOPE
+--------------------------------
+
+THIS LOCK APPLIES TO:
+- Reinforced Concrete (RC) Frame
+- 1–4 Storeys
+- Gravity load only
+- Regular rectangular plan
+- Known soil bearing capacity
+- Pre-design / feasibility / engineering decision support scope
+
+OUT OF SCOPE:
+- Seismic design
+- Wind design
+- Soft clay / peat settlement design
+- Irregular geometry
+- Pile foundation
+- Steel / timber structural systems
+- Final licensed structural sign-off
+
+--------------------------------
+WHAT HAS BEEN VERIFIED
+--------------------------------
+
+1. Core Logic
+- PASS
+- Deterministic behavior confirmed
+
+2. Governing Mode
+- PASS
+- SOIL / COLUMN selection works correctly by actual utilization
+
+3. Single-Step Correction Path
+- PASS
+- FOUNDATION_INCREASE only case works
+- COLUMN_UPGRADE only case works
+
+4. Sequential Correction Path
+- PASS
+- 2-step sequential correction works in correct order
+
+5. Trust Layer
+- PASS
+- Reference Case Matching separated from Actual Governing Mode
+- Expected vs Actual block working
+- Required Values block corrected
+- No confirmed Trust Layer display bug remains in latest verified build
+
+6. Validation Interface
+- PASS
+- Calculation Path operator display corrected
+- Required Area and Soil Pressure display verified
+- Preview / Validation / Decision / Output consistent
+
+7. Source Flags / Reliability
+- PASS
+- USER INPUT / SYSTEM ASSUMPTION / INTERNAL RULE display verified
+
+8. PDF / Export
+- PASS
+- PDF / CSV / JSON verified
+- Before vs After / Cost / Time / BOQ verified
+
+--------------------------------
+VERIFIED TEST MATRIX
+--------------------------------
+
+1. CASE_NO_ACTION
+- 10 x 10
+- 2 floors
+- Foundation 2.75 x 2.75
+- Column 1500
+- Soil 300
+- Result: PASS / NO_ACTION
+
+2. CASE_COLUMN_GOVERNING_FAIL
+- 10 x 10
+- 2 floors
+- Foundation 2.75 x 2.75
+- Column 1000
+- Soil 300
+- Result: FAIL / COLUMN_UPGRADE path verified
+
+3. CASE_SOIL_GOVERNING_FAIL
+- 10 x 10
+- 2 floors
+- Foundation 2.00 x 2.00
+- Column 1500
+- Soil 200
+- Result: FAIL / FOUNDATION_INCREASE path verified
+
+4. CASE_SOIL_GOVERNING_CORRECTED_OUTPUT
+- 10 x 10
+- 2 floors
+- Foundation 2.00 x 2.00
+- Column 1500
+- Soil 200
+- Result: PASS (Corrected)
+
+--------------------------------
+KNOWN FINAL STATUS
+--------------------------------
+
+- No blocking bug remains in verified main paths
+- No confirmed numeric bug remains in verified main paths
+- No confirmed UI display bug remains in latest verified set
+- No confirmed export bug remains in latest verified set
+- Version is stable enough to freeze as baseline
+
+--------------------------------
+KNOWN NON-BLOCKING NOTES
+--------------------------------
+
+- “REFERENCE_ONLY” in Trust Layer is acceptable for non-exact reference match
+- Lock status means stable tested baseline
+- Lock status does NOT mean exhaustive proof for every possible input combination
+- Future hardening / extra stress tests may continue only in new DEV branch
+- V9.9.5 must remain untouched after lock
+
+--------------------------------
+LOCK RULE
+--------------------------------
+
+From this point:
+- Do not modify V9.9.5 directly
+- Do not debug inside LOCKED folder
+- Any future change must go to a new DEV branch / new version
+- V9.9.5 becomes frozen baseline for reference and rollback
+
+--------------------------------
+DEPLOYMENT POSITION
+--------------------------------
+
+PUBLIC / WORKING FOLDER NAME:
+05 TRIPLE_BOT_V9_ENGINEER_PILOT
+
+LOCKED REFERENCE NAME:
+TRIPLE_BOT_V9_9_5_LOCKED
+
+--------------------------------
+RECOMMENDED NEXT VERSION START
+--------------------------------
+
+TRIPLE_BOT_V10_DEV

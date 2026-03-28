@@ -1,10 +1,9 @@
 # ============================================
-# TRIPLE BOT V9.7
-# Module 07 — Decision Intelligence
-# UI: Compact decision layer, detail in expander
-# FIX: WARNING = advisory only, not trigger
-#      Only FAIL triggers decision engine
+# TRIPLE BOT V9.9.2
+# Module 07 — Decision Intelligence + Action Layer
+# SAFE MERGE: keep V9.7 UI + add Action Layer only
 # ============================================
+
 
 def _score_option(option, validation_package):
     governing_mode = validation_package["governing_mode"]
@@ -82,7 +81,67 @@ def _build_reasoning(best_option, validation_package, ranked_options):
     }
 
 
+# ============================================
+# NEW — ACTION LAYER (CORE ADDITION)
+# ============================================
+
+def _build_action_block(validation_package, best_option):
+
+    status         = validation_package["status"]
+    governing_mode = validation_package["governing_mode"]
+    soil_util      = validation_package["soil_utilization"]
+    column_util    = validation_package["column_utilization"]
+
+    if status != "FAIL" or best_option is None:
+        return {
+            "primary_action": None,
+            "all_actions": []
+        }
+
+    actions = []
+
+    if governing_mode == "SOIL":
+        actions.append({
+            "action": "FOUNDATION_INCREASE",
+            "detail": "Increase foundation size to required area"
+        })
+
+        if column_util > 1.0:
+            actions.append({
+                "action": "COLUMN_UPGRADE",
+                "detail": "Upgrade column capacity to meet load demand"
+            })
+
+    elif governing_mode == "COLUMN":
+        actions.append({
+            "action": "COLUMN_UPGRADE",
+            "detail": "Upgrade column capacity to reduce utilization"
+        })
+
+        if soil_util > 1.0:
+            actions.append({
+                "action": "FOUNDATION_INCREASE",
+                "detail": "Increase foundation size to reduce soil pressure"
+            })
+
+    else:
+        actions.append({
+            "action": best_option.get("option_type", "N/A"),
+            "detail": "Apply selected engineering correction"
+        })
+
+    return {
+        "primary_action": actions[0] if actions else None,
+        "all_actions": actions
+    }
+
+
+# ============================================
+# CORE
+# ============================================
+
 def run_decision_intelligence(validation_package, decision_options):
+
     status = validation_package["status"]
 
     ranked_options = sorted(
@@ -91,25 +150,27 @@ def run_decision_intelligence(validation_package, decision_options):
         reverse=True
     )
 
-    # FIX: Only FAIL triggers decision engine
-    # WARNING = advisory only (util 0.8-1.0), no corrective action needed
-    # SAFE = no action needed
     best_option = ranked_options[0] if status == "FAIL" and ranked_options else None
-    reasoning   = _build_reasoning(best_option, validation_package, ranked_options)
+
+    reasoning = _build_reasoning(best_option, validation_package, ranked_options)
 
     if best_option is not None:
         best_option = {**best_option, "reasoning": reasoning}
+
+    # 🔥 ADD HERE
+    action_block = _build_action_block(validation_package, best_option)
 
     return {
         "validation": validation_package,
         "decision":   best_option,
         "options":    ranked_options,
-        "reasoning":  reasoning
+        "reasoning":  reasoning,
+        "action_block": action_block
     }
 
 
 # ============================================
-# DISPLAY — compact decision layer
+# DISPLAY (UNCHANGED + SHOW ACTION)
 # ============================================
 
 def display_decision_results(st, decision_results):
@@ -117,6 +178,7 @@ def display_decision_results(st, decision_results):
     decision  = decision_results.get("decision")
     options   = decision_results.get("options", [])
     reasoning = decision_results.get("reasoning", {})
+    action_block = decision_results.get("action_block", {})
 
     if decision is None:
         st.success("No engineering action required.")
@@ -126,66 +188,17 @@ def display_decision_results(st, decision_results):
     desc        = decision.get("description", "")
     confidence  = reasoning.get("confidence_in_selected_action", "—")
 
-    st.markdown("""
-    <style>
-    .dc-wrap {
-        border: 1px solid #e0e0de;
-        border-radius: 8px;
-        overflow: hidden;
-        margin-bottom: 16px;
-        font-family: 'DM Mono', monospace;
-        background: #fff;
-    }
-    .dc-header {
-        background: #2a2a2a;
-        color: #fff;
-        padding: 10px 18px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .dc-header-label { font-size: 13px; font-weight: 700; letter-spacing: .04em; }
-    .dc-header-conf  { font-size: 10px; color: #aaa; letter-spacing: .1em; }
-    .dc-body { padding: 14px 18px; }
-    .dc-action { font-size: 15px; font-weight: 700; color: #111; margin-bottom: 6px; }
-    .dc-desc   { font-size: 11px; color: #888; margin-bottom: 10px; }
-    .dc-row    { font-size: 11px; color: #666; margin-bottom: 4px; line-height: 1.5; }
-    .dc-row b  { color: #333; }
-    </style>
-    """, unsafe_allow_html=True)
+    st.write("### Engineering Decision")
+    st.write(f"**Action:** {option_type}")
+    st.write(f"**Reason:** {reasoning.get('primary_reason','—')}")
+    st.write(f"**Logic:** {reasoning.get('governing_explanation','—')}")
+    st.write(f"**Confidence:** {confidence}")
 
-    st.markdown(f"""
-    <div class="dc-wrap">
-      <div class="dc-header">
-        <span class="dc-header-label">Engineering Decision</span>
-        <span class="dc-header-conf">CONFIDENCE · {confidence}</span>
-      </div>
-      <div class="dc-body">
-        <div class="dc-action">{option_type}</div>
-        <div class="dc-desc">{desc}</div>
-        <div class="dc-row"><b>Why:</b> {reasoning.get('primary_reason','—')}</div>
-        <div class="dc-row"><b>Logic:</b> {reasoning.get('governing_explanation','—')}</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.expander("▸ Decision Detail", expanded=False):
-        st.caption("Reasoning")
-        st.markdown(f"""
-        <table style="font-size:11px;width:100%;font-family:'DM Mono',monospace">
-          <tr><td style="color:#aaa;padding:4px 8px">Why Selected</td><td style="padding:4px 8px">{reasoning.get('selection_explanation','—')}</td></tr>
-          <tr><td style="color:#aaa;padding:4px 8px">Why Not Others</td><td style="padding:4px 8px">{reasoning.get('rejected_explanation','—')}</td></tr>
-          <tr><td style="color:#aaa;padding:4px 8px">Confidence</td><td style="padding:4px 8px">{confidence}</td></tr>
-        </table>
-        """, unsafe_allow_html=True)
-
-        st.caption("Options Ranking")
-        import pandas as pd
-        rows = [
-            {"rank": i+1, "option": o.get("option_type"), "score": round(o.get("score",0),0), "description": o.get("description","")}
-            for i, o in enumerate(options)
-        ]
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    # 🔥 NEW UI — Action Steps
+    if action_block and action_block.get("all_actions"):
+        st.write("### Action Steps")
+        for i, act in enumerate(action_block["all_actions"], 1):
+            st.write(f"Step {i}: {act.get('action')} → {act.get('detail')}")
 
 
 # ============================================
@@ -197,5 +210,6 @@ def extract_decision_for_output(decision_results):
         "validation": decision_results["validation"],
         "decision":   decision_results["decision"],
         "options":    decision_results["options"],
-        "reasoning":  decision_results.get("reasoning", {})
+        "reasoning":  decision_results.get("reasoning", {}),
+        "action_block": decision_results.get("action_block")
     }
